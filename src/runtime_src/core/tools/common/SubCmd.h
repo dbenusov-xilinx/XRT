@@ -25,7 +25,8 @@
 #include <boost/program_options.hpp>
 
 #include "OptionOptions.h"
-  
+#include "XBHelpMenusCore.h"
+
 class SubCmd {
  public:
    using SubCmdOptions = std::vector<std::string>;
@@ -65,6 +66,9 @@ public:
   void setIsDefaultDevValid(bool _defaultDeviceValid) { m_defaultDeviceValid = _defaultDeviceValid; };
   void setLongDescription(const std::string &_longDescription) {m_longDescription = _longDescription; };
   void setExampleSyntax(const std::string &_exampleSyntax) {m_exampleSyntax = _exampleSyntax; };
+  void printHelp(const XBUtilities::command_options& options,
+                bool removeLongOptDashes = false,
+                const std::string& customHelpSection = "") const;
   void printHelp(const boost::program_options::options_description & _optionDescription,
                  const boost::program_options::options_description & _optionHidden,
                  bool removeLongOptDashes = false,

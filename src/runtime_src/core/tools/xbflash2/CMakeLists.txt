@@ -16,6 +16,7 @@ file(GLOB XBFLASH_BASE_FILES
   "../common/SubCmd.cpp"
   "../common/OptionOptions.cpp"
   "../common/XBHelpMenusCore.cpp"
+  "../common/XBCmdHelpMenus.cpp"
   "../../pcie/tools/xbflash.qspi/firmware_image.cpp"
   "../../pcie/tools/xbflash.qspi/pcidev.cpp"
   "../../pcie/tools/xbflash.qspi/xqspips.cpp"

@@ -18,6 +18,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "XBHelpMenusCore.h"
+
 #include "XBUtilitiesCore.h"
 
 namespace XBU = XBUtilities;
@@ -100,21 +101,19 @@ isPositional(const std::string &_name,
   return false;
 }
 
-
 std::string 
-XBUtilities::create_usage_string( const boost::program_options::options_description &_od,
-                                  const boost::program_options::positional_options_description & _pod,
+XBUtilities::create_usage_string( const usage_options& usage,
                                   bool removeLongOptDashes)
 {
   const static int SHORT_OPTION_STRING_SIZE = 2;
   std::stringstream buffer;
 
-  auto &options = _od.options();
+  auto &options = usage.options.options();
 
   // Gather up the short simple flags
   {
     bool firstShortFlagFound = false;
-    for (auto & option : options) {
+    for (const auto & option : options) {
       // Get the option name
       std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
 
@@ -127,7 +126,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
         continue;
 
       // This option shouldn't be required
-      if (option->semantic()->is_required() == true) 
+      if (option->semantic()->is_required()) 
         continue;
 
       if (!firstShortFlagFound) {
@@ -138,14 +137,14 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
       buffer << optionDisplayName[1];
     }
 
-    if (firstShortFlagFound == true) 
+    if (firstShortFlagFound) 
       buffer << "]";
   }
 
    
   // Gather up the long simple flags (flags with no short versions)
   {
-    for (auto & option : options) {
+    for (const auto & option : options) {
       // Get the option name
       std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
 
@@ -158,7 +157,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
         continue;
 
       // This option shouldn't be required
-      if (option->semantic()->is_required() == true) 
+      if (option->semantic()->is_required()) 
         continue;
 
       
@@ -169,7 +168,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
   }
 
   // Gather up the options with arguments
-  for (auto & option : options) {
+  for (const auto & option : options) {
     // Skip if there are no arguments
     if (option->semantic()->max_tokens() == 0)
       continue;
@@ -188,7 +187,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
   }
 
   // Gather up the options with arguments (options with no short versions)
-  for (auto & option : options) {
+  for (const auto & option : options) {
     // Skip if there are no arguments
     if (option->semantic()->max_tokens() == 0)
       continue;
@@ -209,19 +208,19 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
   }
 
   // Gather up the required options with arguments
-  for (auto & option : options) {
+  for (const auto & option : options) {
     // Skip if there are no arguments
     if (option->semantic()->max_tokens() == 0)
       continue;
 
     // This option is required
-    if (option->semantic()->is_required() == false) 
+    if (!option->semantic()->is_required()) 
       continue;
 
     std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
 
     // We don't wish to have positional options
-    if ( ::isPositional(completeOptionName, _pod) ) {
+    if ( ::isPositional(completeOptionName, usage.positionals) ) {
       continue;
     }
 
@@ -229,123 +228,18 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
   }
 
   // Report the positional arguments
-  for (auto & option : options) {
+  for (const auto & option : options) {
     std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-    if ( ! ::isPositional(completeOptionName, _pod) ) {
+    if ( ! ::isPositional(completeOptionName, usage.positionals) ) {
       continue;
     }
 
     buffer << " " << completeOptionName;
   }
-  
+
+  buffer << " " << usage.description;
 
   return buffer.str();
-}
-
-void 
-XBUtilities::report_commands_help( const std::string &_executable, 
-                                   const std::string &_description,
-                                   const boost::program_options::options_description& _optionDescription,
-                                   const boost::program_options::options_description& _optionHidden,
-                                   const SubCmdsCollection &_subCmds)
-{ 
-  // Formatting color parameters
-  // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header     = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_headerBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
-  const std::string fgc_usageBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
-  const std::string fgc_subCmd     = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_SUBCMD).string();
-  const std::string fgc_subCmdBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_SUBCMD_BODY).string();
-  const std::string fgc_reset      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
-
-  // Helper variable
-  static std::string sHidden = "(Hidden)";
-
-  // -- Command description
-  {
-    static const std::string key = "DESCRIPTION: ";
-    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
-    boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
-    if ( !formattedString.empty() )
-      std::cout << fmtHeader % formattedString;
-  }
-
-  // -- Command usage
-  boost::program_options::positional_options_description emptyPOD;
-  std::string usage = XBU::create_usage_string(_optionDescription, emptyPOD);
-  usage += " [command [commandArgs]]";
-  boost::format fmtUsage(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s%s\n" + fgc_reset);
-  std::cout << fmtUsage % _executable % usage;
-
-  // -- Sort the SubCommands
-  SubCmdsCollection subCmdsReleased;
-  SubCmdsCollection subCmdsDepricated;
-  SubCmdsCollection subCmdsPreliminary;
-
-  for (auto& subCmdEntry : _subCmds) {
-    // Filter out hidden subcommand
-    if (!XBU::getShowHidden() && subCmdEntry->isHidden()) 
-      continue;
-
-    // Depricated sub-command
-    if (subCmdEntry->isDeprecated()) {
-      subCmdsDepricated.push_back(subCmdEntry);
-      continue;
-    }
-
-    // Preliminary sub-command
-    if (subCmdEntry->isPreliminary()) {
-      subCmdsPreliminary.push_back(subCmdEntry);
-      continue;
-    }
-
-    // Released sub-command
-    subCmdsReleased.push_back(subCmdEntry);
-  }
-
-  // Sort the collections by name
-  auto sortByName = [](const auto& d1, const auto& d2) { return d1->getName() < d2->getName(); };
-  std::sort(subCmdsReleased.begin(), subCmdsReleased.end(), sortByName);
-  std::sort(subCmdsPreliminary.begin(), subCmdsPreliminary.end(), sortByName);
-  std::sort(subCmdsDepricated.begin(), subCmdsDepricated.end(), sortByName);
-
-
-  // -- Report the SubCommands
-  boost::format fmtSubCmdHdr(fgc_header + "\n%s COMMANDS:\n" + fgc_reset);  
-  boost::format fmtSubCmd(fgc_subCmd + "  %-10s " + fgc_subCmdBody + "- %s\n" + fgc_reset); 
-  unsigned int subCmdDescTab = 15;
-
-  if (!subCmdsReleased.empty()) {
-    std::cout << fmtSubCmdHdr % "AVAILABLE";
-    for (auto & subCmdEntry : subCmdsReleased) {
-      std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
-      auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false);
-      std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
-    }
-  }
-
-  if (!subCmdsPreliminary.empty()) {
-    std::cout << fmtSubCmdHdr % "PRELIMINARY";
-    for (auto & subCmdEntry : subCmdsPreliminary) {
-      std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
-      auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false);
-      std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
-    }
-  }
-
-  if (!subCmdsDepricated.empty()) {
-    std::cout << fmtSubCmdHdr % "DEPRECATED";
-    for (auto & subCmdEntry : subCmdsDepricated) {
-      std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
-      auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false);
-      std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
-    }
-  }
-
-  report_option_help("OPTIONS", _optionDescription, emptyPOD);
-
-  if (XBU::getShowHidden()) 
-    report_option_help(std::string("OPTIONS ") + sHidden, _optionHidden, emptyPOD);
 }
 
 static std::string 
@@ -375,6 +269,81 @@ create_option_format_name(const boost::program_options::option_description * _op
     optionDisplayName += " " + _option->format_parameter();
 
   return optionDisplayName;
+}
+
+void 
+XBUtilities::report_subcommand_help( const std::string &_executableName,
+                        const std::string &_subCommand,
+                        const std::string &_description, 
+                        const std::string &_extendedHelp,
+                        const command_options& _options,
+                        const boost::program_options::options_description &_globalOptions,
+                        bool removeLongOptDashes,
+                        const std::string& customHelpSection)
+{
+  // Formatting color parameters
+  // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
+  const std::string fgc_header      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
+  const std::string fgc_headerBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
+  const std::string fgc_poption      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL).string();
+  const std::string fgc_poptionBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
+  const std::string fgc_usageBody   = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
+  const std::string fgc_extendedBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
+  const std::string fgc_reset       = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
+
+  // -- Command description
+  {
+    static const std::string key = "DESCRIPTION: ";
+    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
+    boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
+    if ( !formattedString.empty() )
+      std::cout << fmtHeader % formattedString;
+  }
+
+  // -- Command usage
+  std::cout << "\n";
+  for (const auto& usage_path : _options.usage_paths) {
+    const std::string usage = XBU::create_usage_string(usage_path, removeLongOptDashes);
+    boost::format fmtUsage(fgc_header + "USAGE: " + fgc_usageBody + "%s %s%s\n" + fgc_reset);
+    std::cout << fmtUsage % _executableName % _subCommand % usage;
+  }
+
+  // -- Add positional arguments
+  boost::format fmtOOSubPositional(fgc_poption + "  %-15s" + fgc_poptionBody + " - %s\n" + fgc_reset);
+  for (auto option : _options.all_options.options()) {
+    if ( !::isPositional( option->canonical_display_name(po::command_line_style::allow_dash_for_short),
+                          _options.all_positionals))  {
+      continue;
+    }
+
+    std::string optionDisplayFormat = create_option_format_name(option.get(), false);
+    unsigned int optionDescTab = 33;
+    auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth, false);
+
+    std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
+    std::cout << fmtOOSubPositional % ("<" + option->long_name() + ">") % formattedString;
+  }
+
+
+  // -- Options
+  report_option_help("OPTIONS", _options.all_options, _options.all_positionals, false, removeLongOptDashes);
+
+  // -- Custom Section
+  std::cout << customHelpSection << "\n";
+
+  // -- Global Options
+  report_option_help("GLOBAL OPTIONS", _globalOptions, _options.all_positionals, false);
+
+  if (XBU::getShowHidden()) 
+    report_option_help("OPTIONS (Hidden)", _options.hidden_options, _options.all_positionals, false);
+
+  // Extended help
+  {
+    boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
+    auto formattedString = XBU::wrap_paragraphs(_extendedHelp, 2, m_maxColumnWidth, false);
+    if (!formattedString.empty()) 
+      std::cout << fmtExtHelp % formattedString;
+  }
 }
 
 void
@@ -427,136 +396,15 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
                                      bool removeLongOptDashes,
                                      const std::string& customHelpSection)
 {
-  // Formatting color parameters
-  // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_headerBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
-  const std::string fgc_poption      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL).string();
-  const std::string fgc_poptionBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
-  const std::string fgc_usageBody   = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
-  const std::string fgc_extendedBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
-  const std::string fgc_reset       = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
-
-  // -- Command description
-  {
-    static const std::string key = "DESCRIPTION: ";
-    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
-    boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
-    if ( !formattedString.empty() )
-      std::cout << fmtHeader % formattedString;
-  }
-
-  // -- Command usage
-  const std::string usage = XBU::create_usage_string(_optionDescription, _positionalDescription, removeLongOptDashes);
-  boost::format fmtUsage(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s%s\n" + fgc_reset);
-  std::cout << fmtUsage % _executableName % _subCommand % usage;
-  
-  // -- Add positional arguments
-  boost::format fmtOOSubPositional(fgc_poption + "  %-15s" + fgc_poptionBody + " - %s\n" + fgc_reset);
-  for (auto option : _optionDescription.options()) {
-    if ( !::isPositional( option->canonical_display_name(po::command_line_style::allow_dash_for_short),
-                          _positionalDescription))  {
-      continue;
-    }
-
-    std::string optionDisplayFormat = create_option_format_name(option.get(), false);
-    unsigned int optionDescTab = 33;
-    auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth, false);
-
-    std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-    std::cout << fmtOOSubPositional % ("<" + option->long_name() + ">") % formattedString;
-  }
-
-
-  // -- Options
-  report_option_help("OPTIONS", _optionDescription, _positionalDescription, false, removeLongOptDashes);
-
-  // -- Custom Section
-  std::cout << customHelpSection << "\n";
-
-  // -- Global Options
-  report_option_help("GLOBAL OPTIONS", _globalOptions, _positionalDescription, false);
-
-  if (XBU::getShowHidden()) 
-    report_option_help("OPTIONS (Hidden)", _optionHidden, _positionalDescription, false);
-
-  // Extended help
-  {
-    boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
-    auto formattedString = XBU::wrap_paragraphs(_extendedHelp, 2, m_maxColumnWidth, false);
-    if (!formattedString.empty()) 
-      std::cout << fmtExtHelp % formattedString;
-  }
-}
-
-void 
-XBUtilities::report_subcommand_help( const std::string &_executableName,
-                                     const std::string &_subCommand,
-                                     const std::string &_description, 
-                                     const std::string &_extendedHelp,
-                                     const boost::program_options::options_description &_optionDescription,
-                                     const boost::program_options::options_description &_optionHidden,
-                                     const SubCmd::SubOptionOptions & _subOptionOptions,
-                                     const boost::program_options::options_description &_globalOptions)
-{
-  // Formatting color parameters
-  // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header       = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_headerBody   = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
-  const std::string fgc_commandBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_SUBCMD).string();
-  const std::string fgc_usageBody    = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
-
-  const std::string fgc_ooption      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OOPTION).string();
-  const std::string fgc_ooptionBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OOPTION_BODY).string();
-  const std::string fgc_poption      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL).string();
-  const std::string fgc_poptionBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
-  const std::string fgc_extendedBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
-  const std::string fgc_reset        = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
-
-  // -- Command
-  boost::format fmtCommand(fgc_header + "\nCOMMAND: " + fgc_commandBody + "%s\n" + fgc_reset);
-  if ( !_subCommand.empty() )
-    std::cout << fmtCommand % _subCommand;
- 
-  // -- Command description
-  {
-    auto formattedString = XBU::wrap_paragraphs(_description, 15, m_maxColumnWidth, false);
-    boost::format fmtHeader(fgc_header + "\nDESCRIPTION: " + fgc_headerBody + "%s\n" + fgc_reset);
-    if ( !formattedString.empty() )
-      std::cout << fmtHeader % formattedString;
-  }
-
-  // -- Usage
-  std::string usageSubCmds;
-  for (const auto & subCmd : _subOptionOptions) {
-    if (subCmd->isHidden()) 
-      continue;
-
-    if (!usageSubCmds.empty()) 
-      usageSubCmds.append(" | ");
-
-    usageSubCmds.append(subCmd->longName());
-  }
-
-  std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [-h] --[ %s ] [commandArgs]\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds;
-
-  // -- Options
-  boost::program_options::positional_options_description emptyPOD;
-  report_option_help("OPTIONS", _optionDescription, emptyPOD, false);
-
-  // -- Global Options
-  report_option_help("GLOBAL OPTIONS", _globalOptions, emptyPOD, false);
-
-  if (XBU::getShowHidden()) 
-    report_option_help("OPTIONS (Hidden)", _optionHidden, emptyPOD, false);
-
-  // Extended help
-  {
-    boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
-    auto formattedString = XBU::wrap_paragraphs(_extendedHelp, 2, m_maxColumnWidth, false);
-    if (!formattedString.empty()) 
-      std::cout << fmtExtHelp % formattedString;
-  }
+ usage_options usage("");
+ usage.options.add(_optionDescription);
+ usage.positionals = _positionalDescription;
+ command_options command;
+ command.all_options.add(_optionDescription);
+ command.hidden_options.add(_optionHidden);
+ command.all_positionals = _positionalDescription;
+ command.usage_paths.push_back(usage);
+ report_subcommand_help(_executableName, _subCommand, _description, _extendedHelp, command, _globalOptions, removeLongOptDashes, customHelpSection);
 }
 
 std::vector<std::string>

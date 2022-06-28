@@ -20,7 +20,6 @@
 
 // Include files
 // Please keep these to the bare minimum
-#include "SubCmd.h"
 
 #include <string>
 #include <vector>
@@ -28,55 +27,63 @@
 #include <boost/program_options.hpp>
 
 // ----------------------- T Y P E D E F S -----------------------------------
-using SubCmdsCollection = std::vector<std::shared_ptr<SubCmd>>;
 
 namespace XBUtilities {
-  void 
-    report_commands_help( const std::string &_executable, 
-                          const std::string &_description,
-                          const boost::program_options::options_description& _optionDescription,
-                          const boost::program_options::options_description& _optionHidden,
-                          const SubCmdsCollection &_subCmds );
-  void 
-    report_subcommand_help( const std::string &_executableName,
-                            const std::string &_subCommand,
-                            const std::string &_description, 
-                            const std::string &_extendedHelp,
-                            const boost::program_options::options_description & _optionDescription,
-                            const boost::program_options::options_description &_optionHidden,
-                            const boost::program_options::positional_options_description & _positionalDescription,
-                            const boost::program_options::options_description &_globalOptions,
-                            bool removeLongOptDashes = false,
-                            const std::string& customHelpSection = "");
+
+  typedef struct usage_options {
+    boost::program_options::options_description options;
+    boost::program_options::positional_options_description positionals;
+    std::string description;
+    usage_options() : description("") {}
+    usage_options(const std::string& _description) : description(_description) {}
+  } usage_options;
+
+  typedef struct command_options {
+    boost::program_options::options_description all_options;
+    boost::program_options::options_description hidden_options;
+    boost::program_options::positional_options_description all_positionals;
+    std::vector<struct usage_options> usage_paths;
+  } command_options;
 
   void 
-    report_subcommand_help( const std::string &_executableName,
-                            const std::string &_subCommand,
-                            const std::string &_description, 
-                            const std::string &_extendedHelp,
-                            const boost::program_options::options_description &_optionDescription,
-                            const boost::program_options::options_description &_optionHidden,
-                            const SubCmd::SubOptionOptions & _subOptionOptions,
-                            const boost::program_options::options_description &_globalOptions);
+  report_subcommand_help( const std::string &_executableName,
+                          const std::string &_subCommand,
+                          const std::string &_description, 
+                          const std::string &_extendedHelp,
+                          const boost::program_options::options_description & _optionDescription,
+                          const boost::program_options::options_description &_optionHidden,
+                          const boost::program_options::positional_options_description & _positionalDescription,
+                          const boost::program_options::options_description &_globalOptions,
+                          bool removeLongOptDashes = false,
+                          const std::string& customHelpSection = "");
 
   void 
-    report_option_help( const std::string & _groupName, 
-                        const boost::program_options::options_description& _optionDescription,
-                        const boost::program_options::positional_options_description & _positionalDescription,
-                        bool _bReportParameter = true,
-                        bool removeLongOptDashes = false);
+  report_subcommand_help( const std::string &_executableName,
+                          const std::string &_subCommand,
+                          const std::string &_description, 
+                          const std::string &_extendedHelp,
+                          const command_options& options,
+                          const boost::program_options::options_description &_globalOptions,
+                          bool removeLongOptDashes = false,
+                          const std::string& customHelpSection = "");
+
+  void 
+  report_option_help( const std::string & _groupName, 
+                      const boost::program_options::options_description& _optionDescription,
+                      const boost::program_options::positional_options_description & _positionalDescription,
+                      bool _bReportParameter = true,
+                      bool removeLongOptDashes = false);
 
   std::string 
-    create_usage_string( const boost::program_options::options_description &_od,
-                         const boost::program_options::positional_options_description & _pod,
-                         bool removeLongOptDashes = false);
+  create_usage_string( const usage_options& usage,
+                       bool removeLongOptDashes = false);
 
   std::vector<std::string>
-    process_arguments( boost::program_options::variables_map& vm,
-                       boost::program_options::command_line_parser& parser,
-                       const boost::program_options::options_description& options,
-                       const boost::program_options::positional_options_description& positionals,
-                       bool validate_arguments);
+  process_arguments( boost::program_options::variables_map& vm,
+                     boost::program_options::command_line_parser& parser,
+                     const boost::program_options::options_description& options,
+                     const boost::program_options::positional_options_description& positionals,
+                     bool validate_arguments);
 };
 
 #endif

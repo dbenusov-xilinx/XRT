@@ -41,6 +41,14 @@ SubCmd::SubCmd(const std::string & _name,
   // Empty
 }
 
+void 
+SubCmd::printHelp(const XBU::command_options& options,
+                  bool removeLongOptDashes,
+                  const std::string& customHelpSection) const
+{
+  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, options, m_globalOptions, removeLongOptDashes, customHelpSection);
+}
+
 void
 SubCmd::printHelp( const boost::program_options::options_description & _optionDescription,
                    const boost::program_options::options_description & _optionHidden,
@@ -56,7 +64,7 @@ SubCmd::printHelp( const boost::program_options::options_description & _optionDe
                    const boost::program_options::options_description & _optionHidden,
                    const SubOptionOptions & _subOptionOptions) const
 {
- XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, _subOptionOptions, m_globalOptions);
+//  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, _subOptionOptions, m_globalOptions);
 }
 
 std::vector<std::string> 

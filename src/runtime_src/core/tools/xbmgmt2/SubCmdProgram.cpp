@@ -730,27 +730,71 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   bool revertToGolden = false;
   bool help = false;
 
-  po::options_description commonOptions("Common Options");
-  commonOptions.add_options()
+  XBU::command_options command;
+  // Options available to all usage paths
+  po::options_description common_options("Common Options");
+  common_options.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
-                                                                      "  Name (and path) of the partition.")
-    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
-                                                                         "  ALL   - All images will be updated\n"
-                                                                         "  SHELL - Platform image\n"
-                                                                         "  SC    - Satellite controller (Warning: Damage could occur to the device)\n"
-                                                                         "  NO-BACKUP   - Backup boot remains unchanged")
-    ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
-                                                                      "  Name (and path) of the xclbin.")
-    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(),  "Specifies an image to use used to update the persistent device.  Valid values:\n"
-                                                                    "  Name (and path) to the mcs image on disk\n"
-                                                                    "  Name (and path) to the xsabin image on disk")
-    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
-  po::options_description hiddenOptions("Hidden Options");
-  hiddenOptions.add_options()
+  // Usage path for programming the base
+  po::options_description base_usage_options("Base Options");
+  base_usage_options.add_options()
+    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
+                                                                        "  ALL   - All images will be updated\n"
+                                                                        "  SHELL - Platform image\n"
+                                                                        "  SC    - Satellite controller (Warning: Damage could occur to the device)\n"
+                                                                        "  NO-BACKUP   - Backup boot remains unchanged")
+    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(),  "Specifies an image to use used to update the persistent device.  Valid values:\n"
+                                                                    "  Name (and path) to the mcs image on disk\n"
+                                                                    "  Name (and path) to the xsabin image on disk")
+  ;
+  XBU::usage_options base_command("Update base partition (all platforms)");
+  base_command.options.add(common_options);
+  base_command.options.add(base_usage_options);
+  command.usage_paths.push_back(base_command);
+
+  // Usage path for programming a 2RP shell
+  po::options_description shell_usage_options("Shell Options");
+  shell_usage_options.add_options()
+    ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
+                                                                    "  Name (and path) of the partition.")
+  ;
+  XBU::usage_options shell_command("Update shell for 2RP platform (2RP only)");
+  shell_command.options.add(common_options);
+  shell_command.options.add(shell_usage_options);
+  command.usage_paths.push_back(shell_command);
+
+  // Usage path for programming an xclbin
+  po::options_description xclbin_usage_options("xclbin Options");
+  xclbin_usage_options.add_options()
+    ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
+                                                                      "  Name (and path) of the xclbin.")
+  ;
+  XBU::usage_options xclbin_command("Update xclbin (all platforms)");
+  xclbin_command.options.add(common_options);
+  xclbin_command.options.add(xclbin_usage_options);
+  command.usage_paths.push_back(xclbin_command);
+
+  // Usage path for resetting a device
+  po::options_description reset_usage_options("Reset Options");
+  reset_usage_options.add_options()
+    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
+  ;
+  XBU::usage_options reset_command("Set the FPGA into factory mode (all platforms)");
+  reset_command.options.add(common_options);
+  reset_command.options.add(reset_usage_options);
+  command.usage_paths.push_back(reset_command);
+
+  // Consolidate all options for the help menu
+  command.all_options.add(common_options);
+  command.all_options.add(base_usage_options);
+  command.all_options.add(shell_usage_options);
+  command.all_options.add(xclbin_usage_options);
+  command.all_options.add(reset_usage_options);
+
+  command.hidden_options.add_options()
     ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType),
       "Overrides the flash mode. Use with caution.  Valid values:\n"
       "  ospi\n"
@@ -763,11 +807,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, commonOptions, hiddenOptions);
+  process_arguments(vm, _options, command.all_options, command.hidden_options);
 
   // Check to see if help was requested or no command was found
   if (help) {
-    printHelp(commonOptions, hiddenOptions);
+    printHelp(command);
     return;
   }
 
@@ -1031,6 +1075,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   std::cout << "\nERROR: Missing flash operation.  No action taken.\n\n";
-  printHelp(commonOptions, hiddenOptions);
+  printHelp(command);
   throw xrt_core::error(std::errc::operation_canceled);
 }

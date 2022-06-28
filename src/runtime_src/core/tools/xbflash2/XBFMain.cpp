@@ -17,7 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "tools/common/SubCmd.h"
-#include "tools/common/XBHelpMenusCore.h"
+#include "tools/common/XBCmdHelpMenus.h"
 #include "XBFMain.h"
 #include "tools/common/XBUtilitiesCore.h"
 namespace XBU = XBUtilities;

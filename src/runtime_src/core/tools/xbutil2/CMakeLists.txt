@@ -9,6 +9,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/XBUtilities.cpp"
   "../common/SubCmd.cpp"
   "../common/OptionOptions.cpp"
+  "../common/XBCmdHelpMenus.cpp"
   "../common/XBHelpMenusCore.cpp"
   "../common/XBHelpMenus.cpp"
   "../common/Report*.cpp"
