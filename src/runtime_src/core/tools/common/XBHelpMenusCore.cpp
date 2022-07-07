@@ -53,6 +53,7 @@ XBUtilities::isPositional(const std::string &_name,
 
 std::string 
 XBUtilities::create_usage_string( const usage_options& usage,
+                                  const boost::program_options::positional_options_description & positionals,
                                   bool removeLongOptDashes)
 {
   const static int SHORT_OPTION_STRING_SIZE = 2;
@@ -170,7 +171,7 @@ XBUtilities::create_usage_string( const usage_options& usage,
     std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
 
     // We don't wish to have positional options
-    if ( ::isPositional(completeOptionName, usage.positionals) ) {
+    if ( ::isPositional(completeOptionName, positionals) ) {
       continue;
     }
 
@@ -180,7 +181,7 @@ XBUtilities::create_usage_string( const usage_options& usage,
   // Report the positional arguments
   for (const auto & option : options) {
     std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-    if ( ! ::isPositional(completeOptionName, usage.positionals) ) {
+    if ( ! ::isPositional(completeOptionName, positionals) ) {
       continue;
     }
 
@@ -253,7 +254,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   // -- Command usage
   std::cout << "\n";
   for (const auto& usage_path : _options.usage_paths) {
-    const std::string usage = XBU::create_usage_string(usage_path, removeLongOptDashes);
+    const std::string usage = XBU::create_usage_string(usage_path, _options.all_positionals, removeLongOptDashes);
     boost::format fmtUsage(fgc_header + "USAGE: " + fgc_usageBody + "%s %s%s\n" + fgc_reset);
     std::cout << fmtUsage % _executableName % _subCommand % usage;
   }
@@ -348,7 +349,6 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
 {
  usage_options usage("");
  usage.options.add(_optionDescription);
- usage.positionals = _positionalDescription;
  command_options command;
  command.all_options.add(_optionDescription);
  command.hidden_options.add(_optionHidden);

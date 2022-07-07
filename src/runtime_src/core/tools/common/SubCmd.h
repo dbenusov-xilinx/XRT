@@ -66,6 +66,9 @@ public:
   void setIsDefaultDevValid(bool _defaultDeviceValid) { m_defaultDeviceValid = _defaultDeviceValid; };
   void setLongDescription(const std::string &_longDescription) {m_longDescription = _longDescription; };
   void setExampleSyntax(const std::string &_exampleSyntax) {m_exampleSyntax = _exampleSyntax; };
+  void addUsage(XBUtilities::usage_options& usage);
+  void addHiddenOptions(const boost::program_options::options_description & options);
+  void addPositional(const std::string& name, int max_count);
   void printHelp(bool removeLongOptDashes = false,
                  const std::string& customHelpSection = "") const;
   void printHelp(const boost::program_options::options_description & _optionDescription,
@@ -90,7 +93,7 @@ public:
   void report_subcommand_help( bool removeLongOptDashes,
                                const std::string& customHelpSection) const;
 
- protected:
+protected:
   XBUtilities::command_options m_options;
 
  // Variables

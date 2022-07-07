@@ -67,7 +67,7 @@ SubCmd::report_subcommand_help( bool removeLongOptDashes,
   // -- Command usage
   std::cout << "\n";
   for (const auto& usage_path : m_options.usage_paths) {
-    const std::string usage = XBU::create_usage_string(usage_path, removeLongOptDashes);
+    const std::string usage = XBU::create_usage_string(usage_path, m_options.all_positionals, removeLongOptDashes);
     boost::format fmtUsage(fgc_header + "USAGE: " + fgc_usageBody + "%s %s%s\n" + fgc_reset);
     std::cout << fmtUsage % m_executableName % m_subCmdName % usage;
   }
@@ -108,6 +108,39 @@ SubCmd::report_subcommand_help( bool removeLongOptDashes,
     if (!formattedString.empty()) 
       std::cout << fmtExtHelp % formattedString;
   }
+}
+
+static void
+addUniqueOptions( const boost::program_options::options_description & new_options,
+                  boost::program_options::options_description & existing_options)
+{
+  for (const auto& new_option : new_options.options()) {
+    const auto& d = existing_options.find_nothrow(new_option->long_name(), false, false, false);
+    if (!d)
+      existing_options.add(new_option);
+  }
+}
+
+void 
+SubCmd::addUsage(XBU::usage_options& usage)
+{
+  // Always add the new usage
+  m_options.usage_paths.push_back(usage);
+  addUniqueOptions(usage.options, m_options.all_options);
+}
+
+void
+SubCmd::addHiddenOptions(const boost::program_options::options_description & options)
+{
+  addUniqueOptions(options, m_options.hidden_options);
+}
+
+void
+SubCmd::addPositional(const std::string& name, int max_count)
+{
+  // Positionals cannot be validated as they are position based
+  // vs name based
+  m_options.all_positionals.add(name.c_str(), max_count);
 }
 
 void 

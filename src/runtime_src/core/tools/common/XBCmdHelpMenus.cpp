@@ -38,56 +38,6 @@ namespace po = boost::program_options;
 // ------ N A M E S P A C E ---------------------------------------------------
 using namespace XBUtilities;
 
-// Temporary color objects until the supporting color library becomes available
-namespace ec {
-  class fgcolor
-    {
-    public:
-      fgcolor(uint8_t _color) : m_color(_color) {};
-      std::string string() const { return "\033[38;5;" + std::to_string(m_color) + "m"; }
-      static const std::string reset() { return "\033[39m"; };
-      friend std::ostream& operator <<(std::ostream& os, const fgcolor & _obj) { return os << _obj.string(); }
-  
-   private:
-     uint8_t m_color;
-  };
-
-  class bgcolor
-    {
-    public:
-      bgcolor(uint8_t _color) : m_color(_color) {};
-      std::string string() const { return "\033[48;5;" + std::to_string(m_color) + "m"; }
-      static const std::string reset() { return "\033[49m"; };
-      friend std::ostream& operator <<(std::ostream& os, const bgcolor & _obj) { return  os << _obj.string(); }
-
-   private:
-     uint8_t m_color;
-  };
-}
-// ------ C O L O R S ---------------------------------------------------------
-static const uint8_t FGC_HEADER           = 3;   // 3
-static const uint8_t FGC_HEADER_BODY      = 111; // 111
-                                                  
-static const uint8_t FGC_USAGE_BODY       = 252; // 252
-                                                  
-static const uint8_t FGC_OPTION           = 65;  // 65 
-static const uint8_t FGC_OPTION_BODY      = 111; // 111
-                                                  
-static const uint8_t FGC_SUBCMD           = 140; // 140
-static const uint8_t FGC_SUBCMD_BODY      = 111; // 111
-                                                  
-static const uint8_t FGC_POSITIONAL       = 140; // 140
-static const uint8_t FGC_POSITIONAL_BODY  = 111; // 111
-                                                  
-static const uint8_t FGC_OOPTION          = 65;  // 65
-static const uint8_t FGC_OOPTION_BODY     = 70;  // 70
-                                                  
-static const uint8_t FGC_EXTENDED_BODY    = 70;  // 70
-
-
-// ------ S T A T I C   V A R I A B L E S -------------------------------------
-static unsigned int m_maxColumnWidth = 100;
-
 // ------ F U N C T I O N S ---------------------------------------------------
 void 
 XBUtilities::report_commands_help( const std::string &_executable, 
@@ -98,12 +48,12 @@ XBUtilities::report_commands_help( const std::string &_executable,
 { 
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header     = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_headerBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
-  const std::string fgc_usageBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
-  const std::string fgc_subCmd     = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_SUBCMD).string();
-  const std::string fgc_subCmdBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_SUBCMD_BODY).string();
-  const std::string fgc_reset      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
+  const std::string fgc_header     = XBU::is_escape_codes_disabled() ? "" : ec::fgcolor(XBU::FGC_HEADER).string();
+  const std::string fgc_headerBody = XBU::is_escape_codes_disabled() ? "" : ec::fgcolor(XBU::FGC_HEADER_BODY).string();
+  const std::string fgc_usageBody  = XBU::is_escape_codes_disabled() ? "" : ec::fgcolor(XBU::FGC_USAGE_BODY).string();
+  const std::string fgc_subCmd     = XBU::is_escape_codes_disabled() ? "" : ec::fgcolor(XBU::FGC_SUBCMD).string();
+  const std::string fgc_subCmdBody = XBU::is_escape_codes_disabled() ? "" : ec::fgcolor(XBU::FGC_SUBCMD_BODY).string();
+  const std::string fgc_reset      = XBU::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
 
   // Helper variable
   static std::string sHidden = "(Hidden)";
@@ -114,15 +64,15 @@ XBUtilities::report_commands_help( const std::string &_executable,
   // -- Command description
   {
     static const std::string key = "DESCRIPTION: ";
-    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
+    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), XBU::maxColumnWidth - static_cast<unsigned int>(key.size()), false);
     boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
     if ( !formattedString.empty() )
       std::cout << fmtHeader % formattedString;
   }
 
   // -- Command usage
-  
-  std::string usage = XBU::create_usage_string(usage_op);
+  boost::program_options::positional_options_description emptyPOD;
+  std::string usage = XBU::create_usage_string(usage_op, emptyPOD);
   usage += " [command [commandArgs]]";
   boost::format fmtUsage(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s%s\n" + fgc_reset);
   std::cout << fmtUsage % _executable % usage;
@@ -169,7 +119,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
     std::cout << fmtSubCmdHdr % "AVAILABLE";
     for (auto & subCmdEntry : subCmdsReleased) {
       std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
-      auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false);
+      auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, XBU::maxColumnWidth, false);
       std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
     }
   }
@@ -178,7 +128,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
     std::cout << fmtSubCmdHdr % "PRELIMINARY";
     for (auto & subCmdEntry : subCmdsPreliminary) {
       std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
-      auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false);
+      auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, XBU::maxColumnWidth, false);
       std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
     }
   }
@@ -187,15 +137,15 @@ XBUtilities::report_commands_help( const std::string &_executable,
     std::cout << fmtSubCmdHdr % "DEPRECATED";
     for (auto & subCmdEntry : subCmdsDepricated) {
       std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
-      auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false);
+      auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, XBU::maxColumnWidth, false);
       std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
     }
   }
 
-  XBU::report_option_help("OPTIONS", usage_op.options, usage_op.positionals);
+  XBU::report_option_help("OPTIONS", usage_op.options, emptyPOD);
 
   if (XBU::getShowHidden()) 
-    XBU::report_option_help(std::string("OPTIONS ") + sHidden, _optionHidden, usage_op.positionals);
+    XBU::report_option_help(std::string("OPTIONS ") + sHidden, _optionHidden, emptyPOD);
 }
 
 void 
@@ -229,7 +179,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
  
   // -- Command description
   {
-    auto formattedString = XBU::wrap_paragraphs(_description, 15, m_maxColumnWidth, false);
+    auto formattedString = XBU::wrap_paragraphs(_description, 15, XBU::maxColumnWidth, false);
     boost::format fmtHeader(fgc_header + "\nDESCRIPTION: " + fgc_headerBody + "%s\n" + fgc_reset);
     if ( !formattedString.empty() )
       std::cout << fmtHeader % formattedString;
@@ -262,7 +212,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   // Extended help
   {
     boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
-    auto formattedString = XBU::wrap_paragraphs(_extendedHelp, 2, m_maxColumnWidth, false);
+    auto formattedString = XBU::wrap_paragraphs(_extendedHelp, 2, XBU::maxColumnWidth, false);
     if (!formattedString.empty()) 
       std::cout << fmtExtHelp % formattedString;
   }

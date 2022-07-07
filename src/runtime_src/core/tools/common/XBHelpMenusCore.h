@@ -32,7 +32,6 @@ namespace XBUtilities {
 
   typedef struct usage_options {
     boost::program_options::options_description options;
-    boost::program_options::positional_options_description positionals;
     std::string description;
     usage_options() : description("") {}
     usage_options(const std::string& _description) : description(_description) {}
@@ -118,8 +117,9 @@ namespace XBUtilities {
                       bool removeLongOptDashes = false);
 
   std::string 
-  create_usage_string( const usage_options& usage,
-                       bool removeLongOptDashes = false);
+  create_usage_string(const usage_options& usage,
+                      const boost::program_options::positional_options_description & positionals,
+                      bool removeLongOptDashes = false);
 
   std::vector<std::string>
   process_arguments( boost::program_options::variables_map& vm,

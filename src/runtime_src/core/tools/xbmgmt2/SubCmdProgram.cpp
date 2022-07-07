@@ -736,7 +736,7 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
   XBU::usage_options base_command("Update base partition (all platforms)");
   base_command.options.add(common_options);
   base_command.options.add(base_usage_options);
-  m_options.usage_paths.push_back(base_command);
+  addUsage(base_command);
 
   // Usage path for programming a 2RP shell
   po::options_description shell_usage_options("Shell Options");
@@ -747,7 +747,7 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
   XBU::usage_options shell_command("Update shell for 2RP platform (2RP only)");
   shell_command.options.add(common_options);
   shell_command.options.add(shell_usage_options);
-  m_options.usage_paths.push_back(shell_command);
+  addUsage(shell_command);
 
   // Usage path for programming an xclbin
   po::options_description xclbin_usage_options("xclbin Options");
@@ -758,7 +758,7 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
   XBU::usage_options xclbin_command("Update xclbin (all platforms)");
   xclbin_command.options.add(common_options);
   xclbin_command.options.add(xclbin_usage_options);
-  m_options.usage_paths.push_back(xclbin_command);
+  addUsage(xclbin_command);
 
   // Usage path for resetting a device
   po::options_description reset_usage_options("Reset Options");
@@ -768,16 +768,10 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
   XBU::usage_options reset_command("Set the FPGA into factory mode (all platforms)");
   reset_command.options.add(common_options);
   reset_command.options.add(reset_usage_options);
-  m_options.usage_paths.push_back(reset_command);
+  addUsage(reset_command);
 
-  // Consolidate all options for the help menu
-  m_options.all_options.add(common_options);
-  m_options.all_options.add(base_usage_options);
-  m_options.all_options.add(shell_usage_options);
-  m_options.all_options.add(xclbin_usage_options);
-  m_options.all_options.add(reset_usage_options);
-
-  m_options.hidden_options.add_options()
+  po::options_description hiddenOptions("Hidden Options");
+  hiddenOptions.add_options()
     ("flash-type", boost::program_options::value<decltype(m_flashType)>(&m_flashType),
       "Overrides the flash mode. Use with caution.  Valid values:\n"
       "  ospi\n"
@@ -787,6 +781,7 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
     "  DEFAULT - Reboot RPU to partition A\n"
     "  BACKUP  - Reboot RPU to partition B\n")
   ;
+  addHiddenOptions(hiddenOptions);
 }
 
 void
