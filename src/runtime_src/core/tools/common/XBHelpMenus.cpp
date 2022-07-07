@@ -40,7 +40,6 @@ namespace po = boost::program_options;
 using namespace XBUtilities;
 
 // ------ S T A T I C   V A R I A B L E S -------------------------------------
-static unsigned int m_maxColumnWidth = 100;
 static unsigned int m_shortDescriptionColumn = 24;
 
 // ------ F U N C T I O N S ---------------------------------------------------
@@ -48,7 +47,6 @@ std::string
 XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
 {
   // Working variables
-  const unsigned int maxColumnWidth = m_maxColumnWidth - m_shortDescriptionColumn; 
   std::string supportedValues;        // Formatted string of supported values
                                       
   // Make a copy of the data (since it is going to be modified)
@@ -73,7 +71,7 @@ XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
   // Report names and description
   for (const auto & pairs : workingCollection) {
     boost::format &reportFormat = pairs.first[0] == '\'' ? reportFmtQuotes : reportFmt;
-    auto formattedString = XBU::wrap_paragraphs(boost::str(reportFormat % pairs.first % pairs.second), indention, maxColumnWidth, false /*indent first line*/);
+    auto formattedString = XBU::wrap_paragraphs(boost::str(reportFormat % pairs.first % pairs.second), indention,  XBU::maxColumnWidth - m_shortDescriptionColumn, false /*indent first line*/);
     supportedValues += formattedString + "\n";
   }
 

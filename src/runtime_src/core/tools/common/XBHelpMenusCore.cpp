@@ -37,59 +37,9 @@ namespace po = boost::program_options;
 // ------ N A M E S P A C E ---------------------------------------------------
 using namespace XBUtilities;
 
-// Temporary color objects until the supporting color library becomes available
-namespace ec {
-  class fgcolor
-    {
-    public:
-      fgcolor(uint8_t _color) : m_color(_color) {};
-      std::string string() const { return "\033[38;5;" + std::to_string(m_color) + "m"; }
-      static const std::string reset() { return "\033[39m"; };
-      friend std::ostream& operator <<(std::ostream& os, const fgcolor & _obj) { return os << _obj.string(); }
-  
-   private:
-     uint8_t m_color;
-  };
-
-  class bgcolor
-    {
-    public:
-      bgcolor(uint8_t _color) : m_color(_color) {};
-      std::string string() const { return "\033[48;5;" + std::to_string(m_color) + "m"; }
-      static const std::string reset() { return "\033[49m"; };
-      friend std::ostream& operator <<(std::ostream& os, const bgcolor & _obj) { return  os << _obj.string(); }
-
-   private:
-     uint8_t m_color;
-  };
-}
-// ------ C O L O R S ---------------------------------------------------------
-static const uint8_t FGC_HEADER           = 3;   // 3
-static const uint8_t FGC_HEADER_BODY      = 111; // 111
-                                                  
-static const uint8_t FGC_USAGE_BODY       = 252; // 252
-                                                  
-static const uint8_t FGC_OPTION           = 65;  // 65 
-static const uint8_t FGC_OPTION_BODY      = 111; // 111
-                                                  
-static const uint8_t FGC_SUBCMD           = 140; // 140
-static const uint8_t FGC_SUBCMD_BODY      = 111; // 111
-                                                  
-static const uint8_t FGC_POSITIONAL       = 140; // 140
-static const uint8_t FGC_POSITIONAL_BODY  = 111; // 111
-                                                  
-static const uint8_t FGC_OOPTION          = 65;  // 65
-static const uint8_t FGC_OOPTION_BODY     = 70;  // 70
-                                                  
-static const uint8_t FGC_EXTENDED_BODY    = 70;  // 70
-
-
-// ------ S T A T I C   V A R I A B L E S -------------------------------------
-static unsigned int m_maxColumnWidth = 100;
-
 // ------ F U N C T I O N S ---------------------------------------------------
-static bool
-isPositional(const std::string &_name, 
+bool
+XBUtilities::isPositional(const std::string &_name, 
              const boost::program_options::positional_options_description & _pod)
 {
   // Look through the list of positional arguments
@@ -242,10 +192,10 @@ XBUtilities::create_usage_string( const usage_options& usage,
   return buffer.str();
 }
 
-static std::string 
-create_option_format_name(const boost::program_options::option_description * _option,
-                          bool _reportParameter = true,
-                          bool removeLongOptDashes = false)
+std::string 
+XBUtilities::create_option_format_name(const boost::program_options::option_description * _option,
+                          bool _reportParameter,
+                          bool removeLongOptDashes)
 {
   if (_option == nullptr) 
     return "";
@@ -294,7 +244,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   // -- Command description
   {
     static const std::string key = "DESCRIPTION: ";
-    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
+    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), maxColumnWidth - static_cast<unsigned int>(key.size()), false);
     boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
     if ( !formattedString.empty() )
       std::cout << fmtHeader % formattedString;
@@ -318,7 +268,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
 
     std::string optionDisplayFormat = create_option_format_name(option.get(), false);
     unsigned int optionDescTab = 33;
-    auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth, false);
+    auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, maxColumnWidth, false);
 
     std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
     std::cout << fmtOOSubPositional % ("<" + option->long_name() + ">") % formattedString;
@@ -340,7 +290,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   // Extended help
   {
     boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
-    auto formattedString = XBU::wrap_paragraphs(_extendedHelp, 2, m_maxColumnWidth, false);
+    auto formattedString = XBU::wrap_paragraphs(_extendedHelp, 2, maxColumnWidth, false);
     if (!formattedString.empty()) 
       std::cout << fmtExtHelp % formattedString;
   }
@@ -379,7 +329,7 @@ XBUtilities::report_option_help( const std::string & _groupName,
 
     std::string optionDisplayFormat = create_option_format_name(option.get(), _bReportParameter, removeLongOptDashes);
     unsigned int optionDescTab = 23;
-    auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth - optionDescTab, false);
+    auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, maxColumnWidth - optionDescTab, false);
     std::cout << fmtOption % optionDisplayFormat % formattedString;
   }
 }

@@ -42,11 +42,79 @@ SubCmd::SubCmd(const std::string & _name,
 }
 
 void 
-SubCmd::printHelp(const XBU::command_options& options,
-                  bool removeLongOptDashes,
-                  const std::string& customHelpSection) const
+SubCmd::report_subcommand_help( bool removeLongOptDashes,
+                                const std::string& customHelpSection) const
 {
-  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, options, m_globalOptions, removeLongOptDashes, customHelpSection);
+  // Formatting color parameters
+  // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
+  const std::string fgc_header      =  XBU::is_escape_codes_disabled() ? "" : XBU::ec::fgcolor(XBU::FGC_HEADER).string();
+  const std::string fgc_headerBody  =  XBU::is_escape_codes_disabled() ? "" : XBU::ec::fgcolor(XBU::FGC_HEADER_BODY).string();
+  const std::string fgc_poption      = XBU::is_escape_codes_disabled() ? "" : XBU::ec::fgcolor(XBU::FGC_POSITIONAL).string();
+  const std::string fgc_poptionBody  = XBU::is_escape_codes_disabled() ? "" : XBU::ec::fgcolor(XBU::FGC_POSITIONAL_BODY).string();
+  const std::string fgc_usageBody   =  XBU::is_escape_codes_disabled() ? "" : XBU::ec::fgcolor(XBU::FGC_USAGE_BODY).string();
+  const std::string fgc_extendedBody = XBU::is_escape_codes_disabled() ? "" : XBU::ec::fgcolor(XBU::FGC_EXTENDED_BODY).string();
+  const std::string fgc_reset       =  XBU::is_escape_codes_disabled() ? "" : XBU::ec::fgcolor::reset();
+
+  // -- Command description
+  {
+    static const std::string key = "DESCRIPTION: ";
+    auto formattedString = XBU::wrap_paragraphs(m_longDescription, static_cast<unsigned int>(key.size()), XBU::maxColumnWidth - static_cast<unsigned int>(key.size()), false);
+    boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
+    if ( !formattedString.empty() )
+      std::cout << fmtHeader % formattedString;
+  }
+
+  // -- Command usage
+  std::cout << "\n";
+  for (const auto& usage_path : m_options.usage_paths) {
+    const std::string usage = XBU::create_usage_string(usage_path, removeLongOptDashes);
+    boost::format fmtUsage(fgc_header + "USAGE: " + fgc_usageBody + "%s %s%s\n" + fgc_reset);
+    std::cout << fmtUsage % m_executableName % m_subCmdName % usage;
+  }
+
+  // -- Add positional arguments
+  boost::format fmtOOSubPositional(fgc_poption + "  %-15s" + fgc_poptionBody + " - %s\n" + fgc_reset);
+  for (auto option : m_options.all_options.options()) {
+    if ( !XBU::isPositional( option->canonical_display_name(po::command_line_style::allow_dash_for_short),
+                          m_options.all_positionals))  {
+      continue;
+    }
+
+    std::string optionDisplayFormat = XBU::create_option_format_name(option.get(), false);
+    unsigned int optionDescTab = 33;
+    auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, XBU::maxColumnWidth, false);
+
+    std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
+    std::cout << fmtOOSubPositional % ("<" + option->long_name() + ">") % formattedString;
+  }
+
+
+  // -- Options
+  XBU::report_option_help("OPTIONS", m_options.all_options, m_options.all_positionals, false, removeLongOptDashes);
+
+  // -- Custom Section
+  std::cout << customHelpSection << "\n";
+
+  // -- Global Options
+  XBU::report_option_help("GLOBAL OPTIONS", m_globalOptions, m_options.all_positionals, false);
+
+  if (XBU::getShowHidden()) 
+    XBU::report_option_help("OPTIONS (Hidden)", m_options.hidden_options, m_options.all_positionals, false);
+
+  // Extended help
+  {
+    boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
+    auto formattedString = XBU::wrap_paragraphs(m_exampleSyntax, 2, XBU::maxColumnWidth, false);
+    if (!formattedString.empty()) 
+      std::cout << fmtExtHelp % formattedString;
+  }
+}
+
+void 
+SubCmd::printHelp(bool removeLongOptDashes,
+                const std::string& customHelpSection) const
+{
+  report_subcommand_help(removeLongOptDashes, customHelpSection);
 }
 
 void
@@ -103,4 +171,3 @@ SubCmd::conflictingOptions( const boost::program_options::variables_map& _vm,
     throw std::logic_error(errMsg);
   }
 }
-
