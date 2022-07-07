@@ -80,6 +80,10 @@ public:
                   const SubOptionOptions & _subOptionOptions) const;
   std::vector<std::string> process_arguments( boost::program_options::variables_map& vm,
                            const SubCmdOptions& _options,
+                           const SubOptionOptions& suboptions = SubOptionOptions(),
+                           bool validate_arguments = true) const;
+  std::vector<std::string> process_arguments( boost::program_options::variables_map& vm,
+                           const SubCmdOptions& _options,
                            const boost::program_options::options_description& common_options,
                            const boost::program_options::options_description& hidden_options,
                            const boost::program_options::positional_options_description& positionals = boost::program_options::positional_options_description(),
@@ -93,11 +97,9 @@ public:
   void report_subcommand_help( bool removeLongOptDashes,
                                const std::string& customHelpSection) const;
 
-protected:
-  XBUtilities::command_options m_options;
-
  // Variables
  private:
+  XBUtilities::command_options m_options;
   std::string m_executableName;
   std::string m_subCmdName;
   std::string m_shortDescription;

@@ -801,7 +801,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, m_options.all_options, m_options.hidden_options);
+  process_arguments(vm, _options);
 
   // Check to see if help was requested or no command was found
   if (m_help) {

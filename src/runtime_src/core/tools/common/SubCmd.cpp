@@ -171,6 +171,26 @@ SubCmd::printHelp( const boost::program_options::options_description & _optionDe
 std::vector<std::string> 
 SubCmd::process_arguments( po::variables_map& vm,
                            const SubCmdOptions& _options,
+                           const SubOptionOptions& suboptions,
+                           bool validate_arguments) const
+{
+  po::options_description all_options("All Options");
+  all_options.add(m_options.all_options);
+  all_options.add(m_options.hidden_options);
+
+  try {
+    po::command_line_parser parser(_options);
+    return XBU::process_arguments(vm, parser, all_options, m_options.all_positionals, validate_arguments);
+  } catch(boost::program_options::error& e) {
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    printHelp(m_options.all_options, m_options.hidden_options, suboptions);
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+}
+
+std::vector<std::string> 
+SubCmd::process_arguments( po::variables_map& vm,
+                           const SubCmdOptions& _options,
                            const po::options_description& common_options,
                            const po::options_description& hidden_options,
                            const po::positional_options_description& positionals,
