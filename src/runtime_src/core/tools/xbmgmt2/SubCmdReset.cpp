@@ -79,6 +79,20 @@ reset_device(const std::shared_ptr<xrt_core::device>& dev, xrt_core::query::rese
     % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
 }
 
+static std::vector<std::string> devices;
+static std::string resetType = "hot";
+static bool help = false;
+
+static void
+supported(std::string resetType) {
+  std::vector<std::string> vec { "hot", "kernel", "ert", "ecc", "soft-kernel", "aie" };
+  std::vector<std::string>::iterator it;
+  it = std::find (vec.begin(), vec.end(), resetType);
+  if (it == vec.end()) {
+    throw xrt_core::error(-ENODEV, "reset not supported");
+  }
+}
+
 SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("reset", 
              "Resets the given device")
@@ -89,16 +103,24 @@ SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
-}
 
-void
-supported(std::string resetType) {
-  std::vector<std::string> vec { "hot", "kernel", "ert", "ecc", "soft-kernel", "aie" };
-  std::vector<std::string>::iterator it;
-  it = std::find (vec.begin(), vec.end(), resetType);
-  if (it == vec.end()) {
-    throw xrt_core::error(-ENODEV, "reset not supported");
-  }
+  po::options_description commonOptions("Common Options");
+  commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+  ;
+  XBU::usage_options base_usage("Reset the specified device");
+  base_usage.options.add(commonOptions);
+  addUsage(base_usage);
+
+  po::options_description hiddenOptions("Hidden Options");
+  hiddenOptions.add_options()
+    ("type,t", boost::program_options::value<decltype(resetType)>(&resetType)->notifier(supported), "The type of reset to perform. Types resets available:\n"
+                                                                        "  kernel       - Kernel communication links\n" 
+                                                                        "  ert          - Reset management processor\n"
+                                                                        "  ecc          - Reset ecc memory\n"
+                                                                        "  soft-kernel  - Reset soft kernel");
+  addHiddenOptions(hiddenOptions);
 }
 
 void
@@ -108,31 +130,14 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: reset");
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::vector<std::string> devices;
-  std::string resetType = "hot";
-  bool help = false;
-
-  po::options_description commonOptions("Common Options");
-  commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-  ;
-
-  po::options_description hiddenOptions("Hidden Options");
-  hiddenOptions.add_options()
-    ("type,t", boost::program_options::value<decltype(resetType)>(&resetType)->notifier(supported), "The type of reset to perform. Types resets available:\n"
-                                                                        "  kernel       - Kernel communication links\n" 
-                                                                        "  ert          - Reset management processor\n"
-                                                                        "  ecc          - Reset ecc memory\n"
-                                                                        "  soft-kernel  - Reset soft kernel");
 
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, commonOptions, hiddenOptions);
+  process_arguments(vm, _options);
 
   // Check to see if help was requested or no command was found
   if (help) {
-    printHelp(commonOptions, hiddenOptions);
+    printHelp();
     return;
   }
 
