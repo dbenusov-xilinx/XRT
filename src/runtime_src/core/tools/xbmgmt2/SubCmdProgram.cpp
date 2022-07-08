@@ -714,14 +714,14 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
   setIsPreliminary(_isPreliminary);
 
   // Populate the options for the command
-  // Options available to all usage paths
+  // Options available to all usages
   po::options_description common_options("Common Options");
   common_options.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
-  // Usage path for programming the base
+  // Usage for programming the base
   po::options_description base_usage_options("Base Options");
   base_usage_options.add_options()
     ("base,b", boost::program_options::value<decltype(m_update)>(&m_update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
@@ -733,42 +733,34 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
                                                                     "  Name (and path) to the mcs image on disk\n"
                                                                     "  Name (and path) to the xsabin image on disk")
   ;
-  XBU::usage_options base_command("Update base partition (all platforms)");
-  base_command.options.add(common_options);
-  base_command.options.add(base_usage_options);
-  addUsage(base_command);
+  base_usage_options.add(common_options);
+  addUsage(base_usage_options, "Update base partition (all platforms)");
 
-  // Usage path for programming a 2RP shell
+  // Usage for programming a 2RP shell
   po::options_description shell_usage_options("Shell Options");
   shell_usage_options.add_options()
     ("shell,s", boost::program_options::value<decltype(m_plp)>(&m_plp), "The partition to be loaded.  Valid values:\n"
                                                                     "  Name (and path) of the partition.")
   ;
-  XBU::usage_options shell_command("Update shell for 2RP platform (2RP only)");
-  shell_command.options.add(common_options);
-  shell_command.options.add(shell_usage_options);
-  addUsage(shell_command);
+  shell_usage_options.add(common_options);
+  addUsage(shell_usage_options, "Update shell for 2RP platform (2RP only)");
 
-  // Usage path for programming an xclbin
+  // Usage for programming an xclbin
   po::options_description xclbin_usage_options("xclbin Options");
   xclbin_usage_options.add_options()
     ("user,u", boost::program_options::value<decltype(m_xclbin)>(&m_xclbin), "The xclbin to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the xclbin.")
   ;
-  XBU::usage_options xclbin_command("Update xclbin (all platforms)");
-  xclbin_command.options.add(common_options);
-  xclbin_command.options.add(xclbin_usage_options);
-  addUsage(xclbin_command);
+  xclbin_usage_options.add(common_options);
+  addUsage(xclbin_usage_options, "Update xclbin (all platforms)");
 
-  // Usage path for resetting a device
+  // Usage for resetting a device
   po::options_description reset_usage_options("Reset Options");
   reset_usage_options.add_options()
     ("revert-to-golden", boost::program_options::bool_switch(&m_revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
   ;
-  XBU::usage_options reset_command("Set the FPGA into factory mode (all platforms)");
-  reset_command.options.add(common_options);
-  reset_command.options.add(reset_usage_options);
-  addUsage(reset_command);
+  reset_usage_options.add(common_options);
+  addUsage(reset_usage_options, "Set the FPGA into factory mode (all platforms)");
 
   po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()

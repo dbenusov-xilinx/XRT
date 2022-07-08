@@ -64,11 +64,20 @@ SubCmd::report_subcommand_help( bool removeLongOptDashes,
       std::cout << fmtHeader % formattedString;
   }
 
-  // -- Command usage
-  std::cout << "\n";
+  // Sub Command usage
+  std::cout << boost::format(fgc_header + "\nUSAGES:\n");
+  boost::format fmtCmdUsage(fgc_usageBody + "%s %s [--%s]\n" + fgc_reset);
+  for (const auto & subCmd : m_sub_options) {
+    if (subCmd->isHidden())
+      continue;
+
+    std::cout << fmtCmdUsage % m_executableName % m_subCmdName % subCmd->longName();
+  }
+
+  // Command Usage
+  boost::format fmtUsage(fgc_usageBody + "%s %s%s\n" + fgc_reset);
   for (const auto& usage_path : m_options.usage_paths) {
     const std::string usage = XBU::create_usage_string(usage_path, m_options.all_positionals, removeLongOptDashes);
-    boost::format fmtUsage(fgc_header + "USAGE: " + fgc_usageBody + "%s %s%s\n" + fgc_reset);
     std::cout << fmtUsage % m_executableName % m_subCmdName % usage;
   }
 
@@ -122,11 +131,34 @@ addUniqueOptions( const boost::program_options::options_description & new_option
 }
 
 void 
-SubCmd::addUsage(XBU::usage_options& usage)
+SubCmd::addUsage(const boost::program_options::options_description& options, const std::string& description)
 {
-  // Always add the new usage
-  m_options.usage_paths.push_back(usage);
-  addUniqueOptions(usage.options, m_options.all_options);
+  XBU::usage_options common_usage(options, description);
+  m_options.usage_paths.push_back(common_usage);
+  addCommonOptions(common_usage.options);
+}
+
+void
+SubCmd::addSubCmd(const std::shared_ptr<OptionOptions>& sub_cmd)
+{
+  m_sub_options.emplace_back(sub_cmd);
+
+  // Store the name within the appropriate option list
+  po::options_description options("");
+  options.add_options()(sub_cmd->longName().c_str(), sub_cmd->description().c_str());
+  if (sub_cmd->isHidden())
+    addHiddenOptions(options);
+  else
+    addCommonOptions(options);
+
+  sub_cmd->setExecutable(getExecutableName());
+  sub_cmd->setCommand(getName());
+}
+
+void
+SubCmd::addCommonOptions(const boost::program_options::options_description & options)
+{
+  addUniqueOptions(options, m_options.all_options);
 }
 
 void
@@ -165,13 +197,12 @@ SubCmd::printHelp( const boost::program_options::options_description & _optionDe
                    const boost::program_options::options_description & _optionHidden,
                    const SubOptionOptions & _subOptionOptions) const
 {
-//  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, _subOptionOptions, m_globalOptions);
+ report_subcommand_help(false, "");
 }
 
 std::vector<std::string> 
 SubCmd::process_arguments( po::variables_map& vm,
                            const SubCmdOptions& _options,
-                           const SubOptionOptions& suboptions,
                            bool validate_arguments) const
 {
   po::options_description all_options("All Options");
@@ -183,7 +214,7 @@ SubCmd::process_arguments( po::variables_map& vm,
     return XBU::process_arguments(vm, parser, all_options, m_options.all_positionals, validate_arguments);
   } catch(boost::program_options::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    printHelp(m_options.all_options, m_options.hidden_options, suboptions);
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 }

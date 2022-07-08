@@ -347,7 +347,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
                                      bool removeLongOptDashes,
                                      const std::string& customHelpSection)
 {
- usage_options usage("");
+ usage_options usage;
  usage.options.add(_optionDescription);
  command_options command;
  command.all_options.add(_optionDescription);

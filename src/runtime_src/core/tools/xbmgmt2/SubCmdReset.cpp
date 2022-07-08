@@ -109,9 +109,7 @@ SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
-  XBU::usage_options base_usage("Reset the specified device");
-  base_usage.options.add(commonOptions);
-  addUsage(base_usage);
+  addUsage(commonOptions, "Reset the specified device");
 
   po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()

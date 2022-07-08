@@ -42,6 +42,8 @@ class SubCmd {
    bool isDeprecated() const { return m_isDeprecated; };
    bool isPreliminary() const { return m_isPreliminary; };
    bool isDefaultDeviceValid() const { return m_defaultDeviceValid; };
+   void printHelp( bool removeLongOptDashes = false,
+                   const std::string& customHelpSection = "") const;
 
  public:
    void setExecutableName(const std::string & _name) { m_executableName = _name; };
@@ -66,11 +68,10 @@ public:
   void setIsDefaultDevValid(bool _defaultDeviceValid) { m_defaultDeviceValid = _defaultDeviceValid; };
   void setLongDescription(const std::string &_longDescription) {m_longDescription = _longDescription; };
   void setExampleSyntax(const std::string &_exampleSyntax) {m_exampleSyntax = _exampleSyntax; };
-  void addUsage(XBUtilities::usage_options& usage);
+  void addUsage(const boost::program_options::options_description& options, const std::string& description = "");
+  void addSubCmd(const std::shared_ptr<OptionOptions>& sub_cmd);
   void addHiddenOptions(const boost::program_options::options_description & options);
   void addPositional(const std::string& name, int max_count);
-  void printHelp(bool removeLongOptDashes = false,
-                 const std::string& customHelpSection = "") const;
   void printHelp(const boost::program_options::options_description & _optionDescription,
                  const boost::program_options::options_description & _optionHidden,
                  bool removeLongOptDashes = false,
@@ -79,9 +80,8 @@ public:
                   const boost::program_options::options_description & _optionHidden,
                   const SubOptionOptions & _subOptionOptions) const;
   std::vector<std::string> process_arguments( boost::program_options::variables_map& vm,
-                           const SubCmdOptions& _options,
-                           const SubOptionOptions& suboptions = SubOptionOptions(),
-                           bool validate_arguments = true) const;
+                                              const SubCmdOptions& _options,
+                                              bool validate_arguments = true) const;
   std::vector<std::string> process_arguments( boost::program_options::variables_map& vm,
                            const SubCmdOptions& _options,
                            const boost::program_options::options_description& common_options,
@@ -94,8 +94,12 @@ public:
 
  private:
   SubCmd() = delete;
+  void addCommonOptions(const boost::program_options::options_description & options);
   void report_subcommand_help( bool removeLongOptDashes,
                                const std::string& customHelpSection) const;
+
+ protected:
+  SubOptionOptions m_sub_options;
 
  // Variables
  private:

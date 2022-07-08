@@ -33,8 +33,14 @@ namespace XBUtilities {
   typedef struct usage_options {
     boost::program_options::options_description options;
     std::string description;
-    usage_options() : description("") {}
-    usage_options(const std::string& _description) : description(_description) {}
+    usage_options() :
+      description("")
+      {}
+    usage_options(const boost::program_options::options_description& _options,
+                  const std::string& _description = "") : 
+      options(_options),
+      description(_description)
+      {}
   } usage_options;
 
   typedef struct command_options {
