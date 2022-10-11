@@ -18,21 +18,11 @@
 #define __SubCmdExamine_h_
 
 #include "tools/common/SubCmd.h"
+#include "tools/common/SubCmdExamineInternal.h"
 
-class SubCmdExamine : public SubCmd {
- public:
-  virtual void execute(const SubCmdOptions &_options) const;
-
+class SubCmdExamine : public SubCmdExamineInternal {
  public:
   SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary);
-
- private:
-  std::string               m_device;
-  std::vector<std::string>  m_reportNames;
-  std::vector<std::string>  m_elementsFilter;
-  std::string               m_format;
-  std::string               m_output;
-  bool                      m_help;
 };
 
 #endif
