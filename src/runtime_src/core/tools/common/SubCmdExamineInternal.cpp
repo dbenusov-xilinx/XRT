@@ -128,7 +128,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
   
   try {
     if(reportsToProcess.size() > 1 || reportsToRun.front().compare("host") != 0)
-      device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
+      device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), m_is_user_space);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
