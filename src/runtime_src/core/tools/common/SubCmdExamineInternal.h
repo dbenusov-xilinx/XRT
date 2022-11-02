@@ -12,10 +12,10 @@ class SubCmdExamineInternal : public SubCmd {
   virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-  SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool is_user_space, const ReportCollection& fullReportCollection);
+  SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool is_user_space);
 
  private:
-  ReportCollection          m_fullReportCollection;
+  static ReportCollection   m_report_collection;
   bool                      m_is_user_space;
   std::string               m_device;
   std::vector<std::string>  m_reportNames; // Default set of report names are determined if there is a device or not

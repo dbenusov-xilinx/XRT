@@ -17,21 +17,21 @@
 #include "ReportPlatform.h"
 
 // Note: Please insert the reports in the order to be displayed (current alphabetical)
-static const ReportCollection fullReportCollection = {
+ReportCollection SubCmdExamineInternal::m_report_collection = {
   // Common reports
-    std::make_shared<ReportHost>(false),
-    std::make_shared<ReportPlatform>(),
+  std::make_shared<ReportHost>(false),
+  std::make_shared<ReportPlatform>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
-    std::make_shared<ReportMechanical>(),
-    std::make_shared<ReportFirewall>(),
-    std::make_shared<ReportMailbox>(),
-    std::make_shared<ReportCmcStatus>(),
-    std::make_shared<ReportVmrStatus>()
+  std::make_shared<ReportMechanical>(),
+  std::make_shared<ReportFirewall>(),
+  std::make_shared<ReportMailbox>(),
+  std::make_shared<ReportCmcStatus>(),
+  std::make_shared<ReportVmrStatus>()
   #endif
 };
 
 SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmdExamineInternal(_isHidden, _isDepricated, _isPreliminary, false, fullReportCollection)
+    : SubCmdExamineInternal(_isHidden, _isDepricated, _isPreliminary, false)
 {
 }

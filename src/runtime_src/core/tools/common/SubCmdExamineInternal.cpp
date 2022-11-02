@@ -27,10 +27,9 @@ namespace po = boost::program_options;
 #include <regex>
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool is_user_space, const ReportCollection& fullReportCollection)
+SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated, bool _isPreliminary, bool is_user_space)
     : SubCmd("examine",
              "Status of the system and device")
-    , m_fullReportCollection(fullReportCollection)
     , m_is_user_space(is_user_space)
     , m_device("")
     , m_reportNames()
@@ -47,7 +46,7 @@ SubCmdExamineInternal::SubCmdExamineInternal(bool _isHidden, bool _isDepricated,
   setIsPreliminary(_isPreliminary);
   setIsDefaultDevValid(false);
 
-  const std::string reportOptionValues = XBU::create_suboption_list_string(m_fullReportCollection, true /*add 'all' option*/);
+  const std::string reportOptionValues = XBU::create_suboption_list_string(m_report_collection, true /*add 'all' option*/);
   const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
 
   m_commonOptions.add_options()
@@ -121,7 +120,7 @@ SubCmdExamineInternal::execute(const SubCmdOptions& _options) const
 
   bool is_report_output_valid = true;
   // Collect the reports to be processed
-  XBU::collect_and_validate_reports(m_fullReportCollection, reportsToRun, reportsToProcess);
+  XBU::collect_and_validate_reports(m_report_collection, reportsToRun, reportsToProcess);
 
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
