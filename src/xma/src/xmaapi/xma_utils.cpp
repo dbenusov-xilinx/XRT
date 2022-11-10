@@ -383,7 +383,7 @@ void get_system_info() {
                     std::getline(str2, item, delim);
                     std::getline(str2, item, delim);
                     cu_str += " : ";
-                    cu_str += parseCUStatus(std::stoi(item));
+                    cu_str += xrt_core::utils::parse_cu_status(std::stoi(item));
                     xma_logmsg(level, "XMA-System-Info", cu_str.c_str());
                 }
             }
