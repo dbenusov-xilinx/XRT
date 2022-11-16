@@ -722,6 +722,10 @@ public:
   std::string
   get_fpga_device_name() const;
 
+  XCL_DRIVER_DLLESPEC
+  std::string
+  get_interface_id() const;
+
   /**
    * get_uuid() - Get the uuid of the xclbin
    *

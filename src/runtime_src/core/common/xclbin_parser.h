@@ -424,6 +424,9 @@ get_project_name(const axlf* top);
 std::string
 get_fpga_device_name(const char* xml_data, size_t xml_size);
 
+std::string
+get_interface_id(const char* xml_data, size_t xml_size);
+
 }} // xclbin, xrt_core
 
 #endif

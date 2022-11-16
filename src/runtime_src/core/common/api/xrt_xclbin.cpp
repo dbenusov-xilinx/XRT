@@ -56,7 +56,7 @@ namespace {
 // NOLINTNEXTLINE
 constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
 
-constexpr size_t max_sections = 13;
+constexpr size_t max_sections = 14;
 static const std::array<axlf_section_kind, max_sections> kinds = {
   EMBEDDED_METADATA,
   AIE_METADATA,
@@ -70,7 +70,8 @@ static const std::array<axlf_section_kind, max_sections> kinds = {
   CLOCK_FREQ_TOPOLOGY,
   BUILD_METADATA,
   SOFT_KERNEL,
-  AIE_PARTITION
+  AIE_PARTITION,
+  PARTITION_METADATA
 };
 
 XRT_CORE_UNUSED
@@ -390,6 +391,7 @@ class xclbin_impl
     const xclbin_impl* m_ximpl;
     std::string m_project_name;           // <project name="foo">
     std::string m_fpga_device_name;       // <device fpgaDevice="foo">
+    std::string m_interface_id;
     std::vector<xclbin::mem> m_mems;
     std::vector<xclbin::ip> m_ips;
     std::vector<xclbin::kernel> m_kernels;
@@ -503,6 +505,16 @@ class xclbin_impl
         : "";
     }
 
+    static std::string
+    init_interface_id(const xclbin_impl* ximpl)
+    {
+      auto xml = ximpl->get_section<const ::partition_metadata*>(PARTITION_METADATA);
+
+      return xml.first
+        ? xrt_core::xclbin::get_interface_id(xml.first, xml.second)
+        : "";
+    }
+
     // init_mem_encoding() - compress memory indices
     //
     // Mapping from memory index to encoded index.  The compressed
@@ -579,6 +591,7 @@ class xclbin_impl
       : m_ximpl(impl)
       , m_project_name(init_project_name(m_ximpl))
       , m_fpga_device_name(init_fpga_device_name(m_ximpl))
+      , m_interface_id(init_interface_id(m_ximpl))
       , m_mems(init_mems(m_ximpl))
       , m_ips(init_ips(m_ximpl, m_mems))
       , m_kernels(init_kernels(m_ximpl, m_ips))
@@ -739,6 +752,13 @@ public:
   {
     return get_xclbin_info()->m_fpga_device_name;
   }
+
+  const std::string&
+  get_interface_id() const
+  {
+    return get_xclbin_info()->m_interface_id;
+  }
+
 
   const std::vector<xclbin::aie_partition>&
   get_aie_partitions() const
@@ -984,6 +1004,12 @@ get_fpga_device_name() const
   return handle ? handle->get_fpga_device_name() : "";
 }
 
+std::string
+xclbin::
+get_interface_id() const
+{
+  return handle ? handle->get_interface_id() : "";
+}
 
 uuid
 xclbin::

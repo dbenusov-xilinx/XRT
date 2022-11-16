@@ -30,6 +30,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 
+#include <iostream>
+
 // This is xclbin parser. Update this file if xclbin format has changed.
 #ifdef _WIN32
 #pragma warning ( disable : 4996 )
@@ -1140,6 +1142,12 @@ get_fpga_device_name(const char* xml_data, size_t xml_size)
   pt::read_xml(xml_stream,xml_project);
 
   return xml_project.get<std::string>("project.platform.device.<xmlattr>.fpgaDevice","");
+}
+
+std::string
+get_interface_id(const char* xml_data, size_t xml_size)
+{
+  return "1234abcd";
 }
 
 }} // xclbin, xrt_core
