@@ -11,6 +11,12 @@ namespace xrt_core {
 
 class system_linux : public system_pcie
 {
+
+private:
+  // Private look up function for concrete query::request
+  virtual const query::request&
+  lookup_query(query::system_key_type query_key) const override;
+
 public:
   system_linux();
 

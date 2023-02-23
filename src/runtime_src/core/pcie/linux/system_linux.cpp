@@ -64,14 +64,59 @@ get()
 static xrt_core::system_linux*
 singleton_system_linux()
 {
-  static xrt_core::system_linux singleton;
-  return &singleton;
+  static std::shared_ptr<xrt_core::system_linux> singleton(new xrt_core::system_linux());
+  return singleton.get();
+}
+
+// structure to get system XRT information
+struct xrt_info
+{
+  using result_type = xrt_core::query::xrt_info::result_type;
+
+  static result_type
+  get(xrt_core::query::system_key_type key)
+  {
+    boost::property_tree::ptree pt;
+    singleton_system_linux()->get_xrt_info(pt);
+    return pt;
+  }
+};
+
+template <typename QueryRequestType, typename Getter>
+struct function0_get : virtual QueryRequestType
+{
+  boost::any
+  get() const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(k);
+  }
+};
+
+static std::map<xrt_core::query::system_key_type, std::unique_ptr<xrt_core::query::request>> query_tbl;
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func0_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
+}
+
+static void
+initialize_query_table()
+{
+  emplace_func0_request<xrt_core::query::xrt_info, xrt_info>();
 }
 
 // Dynamic linking automatically constructs the singleton
 struct X
 {
-  X() { singleton_system_linux(); }
+  X()
+  {
+    initialize_query_table();
+    singleton_system_linux();
+  }
 } x;
 
 static boost::property_tree::ptree
@@ -329,6 +374,18 @@ program_plp(const device* dev, const std::vector<char> &buffer, bool force) cons
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
+}
+
+const xrt_core::query::request&
+system_linux::
+lookup_query(xrt_core::query::system_key_type query_key) const
+{
+  auto it = query_tbl.find(query_key);
+
+  if (it == query_tbl.end())
+    throw xrt_core::query::no_such_system_key(query_key);
+
+  return *(it->second);
 }
 
 namespace pci {

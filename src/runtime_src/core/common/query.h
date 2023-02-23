@@ -31,6 +31,7 @@ class device;
  */
 namespace query {
 
+enum class system_key_type;
 enum class key_type;
 
 /**
@@ -115,6 +116,30 @@ public:
   exception(const std::string& err)
     : std::runtime_error(err)
   { /*empty*/ }
+};
+
+class no_such_system_key : public exception
+{
+  system_key_type m_key;
+
+  using qtype = std::underlying_type<query::system_key_type>::type;
+public:
+  explicit
+  no_such_system_key(system_key_type k)
+    : exception(boost::str(boost::format("No such query request (%d)") % static_cast<qtype>(k)))
+    , m_key(k)
+  {}
+
+  no_such_system_key(system_key_type k, const std::string& msg)
+    : exception(msg)
+    , m_key(k)
+  {}
+
+  system_key_type
+  get_key() const
+  {
+    return m_key;
+  }
 };
 
 class no_such_key : public exception

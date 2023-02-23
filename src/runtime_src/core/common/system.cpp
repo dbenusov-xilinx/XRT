@@ -10,7 +10,6 @@
 
 #include <vector>
 #include <map>
-#include <memory>
 #include <mutex>
 
 namespace {
@@ -29,7 +28,7 @@ namespace xrt_core {
 // A concrete system object is constructed during static
 // global initialization.  Lifetime is until core library
 // is unloaded.
-system* singleton = nullptr;
+std::shared_ptr<system> singleton;
 
 system::
 system()
@@ -42,7 +41,7 @@ system()
        "xrt_swemu) and remove this linking. Use XCL_EMULATION_MODE set to\n"
        "either hw_emu or sw_emu if running in emulation mode.");
 
-  singleton = this;
+  singleton.reset(this);
 }
 
 // get_device_id() -  Default conversion of device string
@@ -204,6 +203,12 @@ system::monitor_access_type
 get_monitor_access_type()
 {
   return instance().get_monitor_access_type();
+}
+
+std::vector<std::shared_ptr<system>>
+get_system_types()
+{
+  return {singleton};
 }
 
 void

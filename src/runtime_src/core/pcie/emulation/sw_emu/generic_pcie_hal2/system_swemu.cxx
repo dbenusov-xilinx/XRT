@@ -30,8 +30,8 @@ namespace {
 static xrt_core::swemu::system*
 singleton_instance()
 {
-  static xrt_core::swemu::system singleton;
-  return &singleton;
+  static std::shared_ptr<xrt_core::swemu::system> singleton(new xrt_core::swemu::system());
+  return singleton.get();
 }
 
 // Dynamic linking automatically constructs the singleton

@@ -6,8 +6,11 @@
 
 #include "config.h"
 #include "device.h"
+#include "query_requests.h"
 
 #include <boost/property_tree/ptree.hpp>
+#include <memory>
+#include <vector>
 
 namespace xrt_core {
 
@@ -20,12 +23,34 @@ namespace xrt_core {
  * The singleton handle is not available outside implementation so class
  * defintion is per construction for implementation use only.
  */
-class system
+class system : std::enable_shared_from_this<system>
 {
 protected:
   XRT_CORE_COMMON_EXPORT
   system();
+private:
+  // Private look up function for concrete query::request
+  virtual const query::request&
+  lookup_query(query::system_key_type query_key) const
+  {
+    throw std::runtime_error("not implemented");
+  };
+
 public:
+  /**
+   * query() - Query the device for specific property
+   *
+   * @QueryRequestType: Template parameter identifying a specific query request
+   * Return: QueryRequestType::result_type value wrapped as boost::any.
+   */
+  template <typename QueryRequestType>
+  boost::any
+  query() const
+  {
+    auto& qr = lookup_query(QueryRequestType::key);
+    return qr.get(this);
+  }
+
   // REMOVE
   virtual void
   get_xrt_info(boost::property_tree::ptree&) {}
@@ -253,6 +278,10 @@ get_mgmtpf_device(device::id_type id);
 XRT_CORE_COMMON_EXPORT
 system::monitor_access_type
 get_monitor_access_type();
+
+XRT_CORE_COMMON_EXPORT
+std::vector<std::shared_ptr<system>>
+get_system_types();
 
 XRT_CORE_COMMON_EXPORT
 void

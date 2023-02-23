@@ -29,6 +29,61 @@ namespace xrt_core {
 
 namespace query {
 
+enum class system_key_type
+{
+  xrt,
+  os,
+  devices,
+  bdf,
+  monitor_access_type
+};
+
+struct xrt_info : request
+{
+  using result_type = boost::property_tree::ptree;
+  static const system_key_type key = system_key_type::xrt;
+
+  virtual boost::any
+  get() const = 0;
+};
+
+struct os_info : request
+{
+  using result_type = boost::property_tree::ptree;
+  static const system_key_type key = system_key_type::os;
+
+  virtual boost::any
+  get() const = 0;
+};
+
+struct devices : request
+{
+  using result_type = boost::property_tree::ptree;
+  static const system_key_type key = system_key_type::devices;
+
+  virtual boost::any
+  get() const = 0;
+};
+
+struct bdf : request
+{
+  using result_type = boost::property_tree::ptree;
+  static const system_key_type key = system_key_type::devices;
+
+  virtual boost::any
+  get() const = 0;
+};
+
+struct monitor_access_info : request
+{
+  enum class monitor_access_type { bar, mmap, ioctl };
+  using result_type = monitor_access_type;
+  static const system_key_type key = system_key_type::monitor_access_type;
+
+  virtual boost::any
+  get() const = 0;
+};
+
 /**
  * enum class key_type - keys for specific query requests
  *
