@@ -61,11 +61,12 @@ get()
 // during static global initialization.  If statically
 // linking with libxrt_core, then explicit initialiation
 // is required
-static xrt_core::system_linux*
+static std::shared_ptr<xrt_core::system_linux>
 singleton_system_linux()
 {
-  static std::shared_ptr<xrt_core::system_linux> singleton(new xrt_core::system_linux());
-  return singleton.get();
+  if (!xrt_core::system::singleton)
+    xrt_core::system::singleton = std::make_shared<xrt_core::system_linux>();
+  return std::static_pointer_cast<xrt_core::system_linux>(xrt_core::system::singleton);
 }
 
 // structure to get system XRT information

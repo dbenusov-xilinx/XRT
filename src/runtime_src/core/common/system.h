@@ -37,6 +37,9 @@ private:
   };
 
 public:
+
+  static std::shared_ptr<system> singleton;
+
   /**
    * query() - Query the device for specific property
    *

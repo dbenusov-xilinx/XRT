@@ -28,7 +28,7 @@ namespace xrt_core {
 // A concrete system object is constructed during static
 // global initialization.  Lifetime is until core library
 // is unloaded.
-std::shared_ptr<system> singleton;
+std::shared_ptr<system> system::singleton;
 
 system::
 system()
@@ -40,8 +40,6 @@ system()
        "explicity linked with XRT core library (xrt_core, xrt_hwemu, or\n"
        "xrt_swemu) and remove this linking. Use XCL_EMULATION_MODE set to\n"
        "either hw_emu or sw_emu if running in emulation mode.");
-
-  singleton.reset(this);
 }
 
 // get_device_id() -  Default conversion of device string
@@ -79,11 +77,11 @@ instance()
   static std::mutex mtx;
   std::lock_guard lk(mtx);
 
-  if (!singleton)
+  if (!system::singleton)
     load_shim();
 
-  if (singleton)
-    return *singleton;
+  if (system::singleton)
+    return *system::singleton;
 
   throw std::runtime_error("system singleton is not loaded");
 }
@@ -208,7 +206,7 @@ get_monitor_access_type()
 std::vector<std::shared_ptr<system>>
 get_system_types()
 {
-  return {singleton};
+  return {system::singleton};
 }
 
 void
