@@ -182,10 +182,11 @@ searchLegacyXclbin( const uint16_t vendor,
   const std::string xsapath(getXsaPath(vendor));
 
   if (!boost::filesystem::is_directory(dsapath) && !boost::filesystem::is_directory(xsapath)) {
-    logger(_ptTest, "Error", boost::str(boost::format("Failed to find '%s' or '%s'") % dsapath % xsapath));
+    const auto fmt = boost::format("Failed to find '%s' or '%s'") % dsapath % xsapath;
+    logger(_ptTest, "Error", boost::str(fmt));
     logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
     _ptTest.put("status", test_token_failed);
-    return "";
+    XBUtilities::throw_cancel(fmt);
   }
 
   //create possible xclbin paths
@@ -198,9 +199,43 @@ searchLegacyXclbin( const uint16_t vendor,
   else if (boost::filesystem::exists(dsa_xclbin))
     return dsaXclbinPath;
 
-  logger(_ptTest, "Details", boost::str(boost::format("Platform path not available. Skipping validation")));
+  const std::string fmt = "Platform path not available. Skipping validation";
+  logger(_ptTest, "Details", fmt);
   _ptTest.put("status", test_token_skipped);
+  XBUtilities::throw_cancel(fmt);
   return "";
+}
+
+static std::string
+findPlatformPath(const std::shared_ptr<xrt_core::device>& _dev,
+                 boost::property_tree::ptree& _ptTest)
+{
+  //check if a 2RP platform
+  const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(_dev, {});
+
+  if (!logic_uuid.empty())
+    return searchSSV2Xclbin(logic_uuid.front(), _ptTest);
+  else {
+    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
+    auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
+    return searchLegacyXclbin(vendor, name, _ptTest);
+  }
+}
+
+static std::string
+findXclbinPath( const std::shared_ptr<xrt_core::device>& _dev,
+                const std::string& xclbin,
+                boost::property_tree::ptree& _ptTest)
+{
+  const auto platform_path = findPlatformPath(_dev, _ptTest);
+  const auto xclbin_path = _ptTest.get<std::string>("xclbin_directory", platform_path) + xclbin;
+  if (!boost::filesystem::exists(xclbin_path)) {
+    const auto fmt = boost::format("%s not available. Skipping validation.") % xclbin_path;
+    logger(_ptTest, "Details", boost::str(fmt));
+    _ptTest.put("status", test_token_skipped);
+    XBUtilities::throw_cancel(fmt);
+  }
+  return xclbin_path;
 }
 
 /*
@@ -212,55 +247,29 @@ searchLegacyXclbin( const uint16_t vendor,
  * 4. Check results
  */
 void
-runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& py,
-             const std::string& xclbin,
-             boost::property_tree::ptree& _ptTest)
+runTestCase(const std::shared_ptr<xrt_core::device>& _dev,
+            const std::string& py,
+            const std::string& xclbin,
+            boost::property_tree::ptree& _ptTest)
 {
-  std::string name;
-  try {
-    name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
-  } catch (...) {
-    logger(_ptTest, "Error", "Unable to find device VBNV");
-
-    _ptTest.put("status", test_token_failed);
-    return;
-  }
-
-  //check if a 2RP platform
-  std::vector<std::string> logic_uuid;
-  try{
-    logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(_dev);
-  } catch (...) { }
-
-  std::string platform_path;
-  if (!logic_uuid.empty())
-    platform_path = searchSSV2Xclbin(logic_uuid.front(), _ptTest);
-  else {
-    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
-    platform_path = searchLegacyXclbin(vendor, name, _ptTest);
-  }
-
-  const auto xclbin_parent_path = _ptTest.get<std::string>("xclbin_directory", platform_path);
-  const auto xclbinPath = xclbin_parent_path + xclbin;
+  const auto xclbinPath = findXclbinPath(_dev, xclbin, _ptTest);
 
   // 0RP (nonDFX) flat shell support.
   // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
+  const auto logic_uuid = xrt_core::device_query_default<xrt_core::query::logic_uuids>(_dev, {});
   if (!logic_uuid.empty() && !boost::filesystem::exists(xclbinPath)) {
     logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
     _ptTest.put("status", test_token_skipped);
     return;
   }
 
-  //check if xclbin is present
-  if (xclbinPath.empty() || !boost::filesystem::exists(xclbinPath)) {
-    _ptTest.put("status", test_token_skipped);
-    return;
-  }
-
   // log xclbin test dir for debugging purposes
+  boost::filesystem::path xclbin_path(xclbinPath);
+  auto xclbin_parent_path = xclbin_path.parent_path().string();
   logger(_ptTest, "Xclbin", xclbin_parent_path);
 
+  std::string platform_path = findPlatformPath(_dev, _ptTest);
   auto json_exists = [platform_path]() {
     const static std::string platform_metadata = "/platform.json";
     std::string platform_json_path(platform_path + platform_metadata);
@@ -664,31 +673,7 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
   uuid_parse(xrt_core::device_query<xrt_core::query::xclbin_uuid>(dev).c_str(), uuid);
   std::string xclbin = ptTest.get<std::string>("xclbin", "");
 
-  //if no xclbin is loaded, locate the default xclbin
-  //check if a 2RP platform
-  std::vector<std::string> logic_uuid;
-  try {
-    logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(dev);
-  } catch (...) { }
-
-  std::string xclbinPath;
-  auto xclbin_location = ptTest.get<std::string>("xclbin_directory", "");
-  if (!xclbin_location.empty()) {
-    xclbinPath = xclbin_location + xclbin;
-  }
-  else if (!logic_uuid.empty()) {
-    xclbinPath = searchSSV2Xclbin(logic_uuid.front(), ptTest) + xclbin;
-  } else {
-    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
-    auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
-    xclbinPath = searchLegacyXclbin(vendor, name, ptTest) + xclbin;
-  }
-
-  if (!boost::filesystem::exists(xclbinPath)) {
-    logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin));
-    ptTest.put("status", test_token_skipped);
-    return false;
-  }
+  std::string xclbinPath = findXclbinPath(dev, xclbin, ptTest) + xclbin;
 
   try {
     program_xclbin(dev, xclbinPath);
