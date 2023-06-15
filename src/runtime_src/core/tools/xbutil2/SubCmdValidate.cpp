@@ -97,8 +97,8 @@ void logger(boost::property_tree::ptree& _ptTest, const std::string& tag, const 
  * search for xclbin for an SSV2 platform
  */
 std::string
-searchSSV2Xclbin(const std::string& logic_uuid,
-                  const std::string& xclbin, boost::property_tree::ptree& _ptTest)
+searchSSV2Xclbin( const std::string& logic_uuid,
+                  boost::property_tree::ptree& _ptTest)
 {
   std::string formatted_fw_path("/opt/xilinx/firmware/");
   boost::filesystem::path fw_dir(formatted_fw_path);
@@ -136,7 +136,7 @@ searchSSV2Xclbin(const std::string& logic_uuid,
           ++iter;
 		    }
         else if (uuids[0].compare(logic_uuid) == 0) {
-          return cm.str(1) + "test/" + xclbin;
+          return cm.str(1) + "test/";
         }
       }
       else if (iter.level() > 4) {
@@ -146,7 +146,7 @@ searchSSV2Xclbin(const std::string& logic_uuid,
 		  ++iter;
     }
   }
-  logger(_ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation") % xclbin));
+  logger(_ptTest, "Details", boost::str(boost::format("Platform path not available. Skipping validation")));
   _ptTest.put("status", test_token_skipped);
   return "";
 }
@@ -174,7 +174,9 @@ getXsaPath(const uint16_t vendor)
  * search for xclbin for a legacy platform
  */
 std::string
-searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std::string& xclbin, boost::property_tree::ptree& _ptTest)
+searchLegacyXclbin( const uint16_t vendor,
+                    const std::string& dev_name,
+                    boost::property_tree::ptree& _ptTest)
 {
   const std::string dsapath("/opt/xilinx/dsa/");
   const std::string xsapath(getXsaPath(vendor));
@@ -187,18 +189,16 @@ searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std
   }
 
   //create possible xclbin paths
-  std::string xsaXclbinPath = xsapath + dev_name + "/test/" + xclbin;
-  std::string dsaXclbinPath = dsapath + dev_name + "/test/" + xclbin;
+  std::string xsaXclbinPath = xsapath + dev_name + "/test/";
+  std::string dsaXclbinPath = dsapath + dev_name + "/test/";
   boost::filesystem::path xsa_xclbin(xsaXclbinPath);
   boost::filesystem::path dsa_xclbin(dsaXclbinPath);
-  if (boost::filesystem::exists(xsa_xclbin)) {
+  if (boost::filesystem::exists(xsa_xclbin))
     return xsaXclbinPath;
-  }
-  else if (boost::filesystem::exists(dsa_xclbin)) {
+  else if (boost::filesystem::exists(dsa_xclbin))
     return dsaXclbinPath;
-  }
 
-  logger(_ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation") % xclbin));
+  logger(_ptTest, "Details", boost::str(boost::format("Platform path not available. Skipping validation")));
   _ptTest.put("status", test_token_skipped);
   return "";
 }
@@ -232,18 +232,16 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(_dev);
   } catch (...) { }
 
-  std::string xclbinPath;
-  auto xclbin_location = _ptTest.get<std::string>("xclbin_directory", "");
-  if (!xclbin_location.empty()) {
-    xclbinPath = xclbin_location + xclbin;
-  }
-  else if (!logic_uuid.empty()) {
-    xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, _ptTest);
-  }
+  std::string platform_path;
+  if (!logic_uuid.empty())
+    platform_path = searchSSV2Xclbin(logic_uuid.front(), _ptTest);
   else {
     auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
-    xclbinPath = searchLegacyXclbin(vendor, name, xclbin, _ptTest);
+    platform_path = searchLegacyXclbin(vendor, name, _ptTest);
   }
+
+  const auto xclbin_parent_path = _ptTest.get<std::string>("xclbin_directory", platform_path);
+  const auto xclbinPath = xclbin_parent_path + xclbin;
 
   // 0RP (nonDFX) flat shell support.
   // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.
@@ -261,13 +259,11 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
   }
 
   // log xclbin test dir for debugging purposes
-  boost::filesystem::path xclbin_path(xclbinPath);
-  auto test_dir = xclbin_path.parent_path().string();
-  logger(_ptTest, "Xclbin", test_dir);
+  logger(_ptTest, "Xclbin", xclbin_parent_path);
 
-  auto json_exists = [test_dir]() {
+  auto json_exists = [platform_path]() {
     const static std::string platform_metadata = "/platform.json";
-    std::string platform_json_path(test_dir + platform_metadata);
+    std::string platform_json_path(platform_path + platform_metadata);
     return boost::filesystem::exists(platform_json_path) ? true : false;
   };
 
@@ -294,7 +290,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
       test_name = test_map.find(py)->second;
 
     // Parse if the file exists here
-    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_name;
+    std::string  xrtTestCasePath = "/proj/rdi/staff/dbenusov/XRT/build/Debug/opt/xilinx/xrt/test/" + test_name;
     boost::filesystem::path xrt_path(xrtTestCasePath);
     if (!boost::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
@@ -306,7 +302,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     // log testcase path for debugging purposes
     logger(_ptTest, "Testcase", xrtTestCasePath);
 
-    std::vector<std::string> args = { "-p", test_dir,
+    std::vector<std::string> args = { "-p", platform_path,
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     try {
       int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", MAX_TEST_DURATION, os_stdout, os_stderr);
@@ -681,11 +677,11 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
     xclbinPath = xclbin_location + xclbin;
   }
   else if (!logic_uuid.empty()) {
-    xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, ptTest);
+    xclbinPath = searchSSV2Xclbin(logic_uuid.front(), ptTest) + xclbin;
   } else {
     auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
     auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
-    xclbinPath = searchLegacyXclbin(vendor, name, xclbin, ptTest);
+    xclbinPath = searchLegacyXclbin(vendor, name, ptTest) + xclbin;
   }
 
   if (!boost::filesystem::exists(xclbinPath)) {
@@ -1249,6 +1245,47 @@ aiePlTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::p
 }
 
 /*
+ * TEST #14
+ */
+void
+psBandwidthTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+  _ptTest.put("xclbin_directory", "/lib/firmware/xilinx/ps_kernels/");
+  runTestCase(_dev, "ps_bandwidth.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+/*
+ * TEST #15
+ */
+void
+psAieTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+  _ptTest.put("xclbin_directory", "/lib/firmware/xilinx/ps_kernels/");
+  runTestCase(_dev, "ps_aie.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+/*
+ * TEST #16
+ */
+void
+psValidateTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+  _ptTest.put("xclbin_directory", "/lib/firmware/xilinx/ps_kernels/");
+  runTestCase(_dev, "ps_validate.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+/*
+ * TEST #17
+ */
+void
+psIopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+  _ptTest.put("xclbin_directory", "/lib/firmware/xilinx/ps_kernels/");
+  runTestCase(_dev, "ps_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+
+/*
 * helper function to initialize test info
 */
 static boost::property_tree::ptree
@@ -1282,7 +1319,11 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
   { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
-  { create_init_test("aie-pl", "Run AIE PL test", "aie_control_config.json"), aiePlTest }
+  { create_init_test("aie", "Run AIE PL test", "aie_control_config.json"), aiePlTest },
+  { create_init_test("ps-aie", "Run PS controlled AIE test", "ps_aie.xclbin"), psAieTest },
+  { create_init_test("ps-pl-verify", "Run PS controlled 'Hello World' PL kernel test", "ps_bandwidth.xclbin"), psBandwidthTest },
+  { create_init_test("ps-verify", "Run 'Hello World' PS kernel test", "ps_validate.xclbin"), psValidateTest },
+  { create_init_test("ps-iops", "Run IOPS PS test", "ps_validate.xclbin"), psIopsTest }
 };
 
 
