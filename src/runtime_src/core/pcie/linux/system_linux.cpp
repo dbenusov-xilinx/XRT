@@ -139,8 +139,8 @@ system_linux::
 system_linux()
 {
   // Add built-in driver to the list.
-  driver_list::append(std::make_shared<pci::drv_xocl>());
-  driver_list::append(std::make_shared<pci::drv_xclmgmt>());
+  // driver_list::append(std::make_shared<pci::drv_xocl>());
+  // driver_list::append(std::make_shared<pci::drv_xclmgmt>());
 
   // Load driver plug-ins. Driver list will be updated during loading.
   // Don't need to die on a plug-in loading failure.

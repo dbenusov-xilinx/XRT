@@ -80,3 +80,46 @@ install(TARGETS xrt_core xrt_core_static
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )
+
+# Create alveo only package
+set(ALVEO_TARGET xrt_driver_alveo)
+
+add_library(${ALVEO_TARGET} SHARED
+  $<TARGET_OBJECTS:core_pcielinux_plugin_xdp_objects>
+  debug.cpp
+  device_linux.cpp
+  pcidev.cpp
+  pcidrv.cpp
+  pcidrv_xocl.cpp
+  pcidrv_xclmgmt.cpp
+  shim.cpp
+  )
+
+set_target_properties(${ALVEO_TARGET} PROPERTIES
+  VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION}
+  )
+
+target_compile_definitions(${ALVEO_TARGET} PRIVATE
+  # below macros is required so that i/f defined in ishim.h is
+  # consistent with native xrt implementation
+  XRT_ENABLE_AIE
+  XRT_AIE_BUILD
+  XCLHAL_MAJOR_VER=2
+  XCLHAL_MINOR_VER=1
+  )
+
+target_include_directories(${ALVEO_TARGET}
+  PRIVATE
+  ${XRT_SOURCE_DIR}/runtime_src
+  ${XRT_BINARY_DIR}/gen
+  )
+
+target_link_libraries(${ALVEO_TARGET}
+  PRIVATE
+  xrt_core
+  xrt_coreutil
+  )
+
+install(TARGETS ${ALVEO_TARGET} DESTINATION xrt/lib COMPONENT alveo)
+
