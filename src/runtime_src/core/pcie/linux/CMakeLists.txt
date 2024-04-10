@@ -110,8 +110,8 @@ target_include_directories(${ALVEO_TARGET}
 
 target_link_libraries(${ALVEO_TARGET}
   PRIVATE
-  xrt_core
-  xrt_coreutil
+  xrt_core_static
+  xrt_coreutil_static
   )
 
 install(TARGETS ${ALVEO_TARGET} DESTINATION xrt/lib COMPONENT alveo)
