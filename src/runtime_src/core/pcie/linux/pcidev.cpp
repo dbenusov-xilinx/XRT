@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2020 Xilinx, Inc
-// Copyright (C) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (C) 2022-2024 Advanced Micro Devices, Inc. All rights reserved.
 #include "pcidev.h"
 #include "pcidrv.h"
 #include "xclbin.h"
@@ -84,23 +84,6 @@ is_admin()
   return (getuid() == 0) || (geteuid() == 0);
 }
 
-static size_t
-bar_size(const std::string &dir, unsigned bar)
-{
-  std::ifstream ifs(dir + "/resource");
-  if (!ifs.good())
-    return 0;
-  std::string line;
-  for (unsigned i = 0; i <= bar; i++) {
-    line.clear();
-    std::getline(ifs, line);
-  }
-  long long start, end, meta;
-  if (sscanf(line.c_str(), "0x%llx 0x%llx 0x%llx", &start, &end, &meta) != 3)
-    return 0;
-  return end - start + 1;
-}
-
 static int
 get_render_value(const std::string& dir, const std::string& devnode_prefix)
 {
@@ -154,8 +137,6 @@ wordcopy(void *dst, const void* src, size_t bytes)
 namespace xrt_core { namespace pci {
 
 namespace sysfs {
-
-static constexpr const char* dev_root = "/sys/bus/pci/devices/";
 
 static std::string
 get_path(const std::string& name, const std::string& subdev, const std::string& entry)
@@ -473,43 +454,12 @@ dev(std::shared_ptr<const drv> driver, std::string sysfs)
       m_driver->dev_node_prefix());
   }
 
-  sysfs_get<int>("", "userbar", err, m_user_bar, 0);
-  m_user_bar_size = bar_size(sysfs::dev_root + m_sysfs_name, m_user_bar);
   sysfs_get<bool>("", "ready", err, m_is_ready, false);
-  m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 }
 
 dev::
 ~dev()
 {
-  if (m_user_bar_map != MAP_FAILED)
-    ::munmap(m_user_bar_map, m_user_bar_size);
-}
-
-int
-dev::
-map_usr_bar() const
-{
-  std::lock_guard<std::mutex> l(m_lock);
-
-  if (m_user_bar_map != MAP_FAILED)
-    return 0;
-
-  int dev_handle = open("", O_RDWR);
-  if (dev_handle < 0)
-    return -errno;
-
-  m_user_bar_map = (char *)::mmap(0, m_user_bar_size,
-                                PROT_READ | PROT_WRITE, MAP_SHARED, dev_handle, 0);
-
-  // Mapping should stay valid after handle is closed
-  // (according to man page)
-  (void)close(dev_handle);
-
-  if (m_user_bar_map == MAP_FAILED)
-    return -errno;
-
-  return 0;
 }
 
 void
@@ -518,33 +468,6 @@ close(int dev_handle) const
 {
   if (dev_handle != -1)
     (void)::close(dev_handle);
-}
-
-
-int
-dev::
-pcieBarRead(uint64_t offset, void* buf, uint64_t len) const
-{
-  if (m_user_bar_map == MAP_FAILED) {
-    int ret = map_usr_bar();
-    if (ret)
-      return ret;
-  }
-  (void) wordcopy(buf, m_user_bar_map + offset, len);
-  return 0;
-}
-
-int
-dev::
-pcieBarWrite(uint64_t offset, const void* buf, uint64_t len) const
-{
-  if (m_user_bar_map == MAP_FAILED) {
-    int ret = map_usr_bar();
-    if (ret)
-      return ret;
-  }
-  (void) wordcopy(m_user_bar_map + offset, buf, len);
-  return 0;
 }
 
 int
@@ -556,14 +479,6 @@ ioctl(int dev_handle, unsigned long cmd, void *arg) const
     return -1;
   }
   return ::ioctl(dev_handle, cmd, arg);
-}
-
-int
-dev::
-poll(int dev_handle, short events, int timeout_ms)
-{
-  pollfd info = {dev_handle, events, 0};
-  return ::poll(&info, 1, timeout_ms);
 }
 
 void*
@@ -586,106 +501,6 @@ munmap(int dev_handle, void* addr, size_t len)
     return -1;
   }
   return ::munmap(addr, len);
-}
-
-int
-dev::
-get_partinfo(std::vector<std::string>& info, void *blob)
-{
-  std::vector<char> buf;
-  if (!blob) {
-    std::string err;
-    sysfs_get("", "fdt_blob", err, buf);
-    if (!buf.size())
-      return -ENOENT;
-
-    blob = buf.data();
-  }
-
-  struct fdt_header *bph = (struct fdt_header *)blob;
-  uint32_t version = be32toh(bph->version);
-  uint32_t off_dt = be32toh(bph->off_dt_struct);
-  const char *p_struct = (const char *)blob + off_dt;
-  uint32_t off_str = be32toh(bph->off_dt_strings);
-  const char *p_strings = (const char *)blob + off_str;
-  const char *p, *s;
-  uint32_t tag;
-  uint32_t level = 0;
-
-  p = p_struct;
-  while ((tag = be32toh(GET_CELL(p))) != FDT_END) {
-    if (tag == FDT_BEGIN_NODE) {
-      s = p;
-      p = PALIGN(p + strlen(s) + 1, 4);
-      std::regex e("partition_info_([0-9]+)");
-      std::cmatch cm;
-      std::regex_match(s, cm, e);
-      if (cm.size())
-        level = std::stoul(cm.str(1));
-      continue;
-    }
-
-    if (tag != FDT_PROP)
-      continue;
-
-    int sz = be32toh(GET_CELL(p));
-    s = p_strings + be32toh(GET_CELL(p));
-    if (version < 16 && sz >= 8)
-      p = PALIGN(p, 8);
-
-    if (strcmp(s, "__INFO")) {
-      p = PALIGN(p + sz, 4);
-      continue;
-    }
-
-    if (info.size() <= level)
-      info.resize(level + 1);
-
-    info[level] = std::string(p);
-
-    p = PALIGN(p + sz, 4);
-  }
-  return 0;
-}
-
-int
-dev::
-flock(int dev_handle, int op)
-{
-  if (dev_handle == -1) {
-    errno = -EINVAL;
-    return -1;
-  }
-  return ::flock(dev_handle, op);
-}
-
-std::shared_ptr<dev>
-dev::
-lookup_peer_dev()
-{
-  if (!m_is_mgmt)
-    return nullptr;
-
-  int i = 0;
-  for (auto udev = get_dev(i, true); udev; udev = get_dev(i, true), ++i)
-    if (udev->m_domain == m_domain && udev->m_bus == m_bus && udev->m_dev == m_dev)
-      return udev;
-
-  return nullptr;
-}
-  
-device::handle_type
-dev::
-create_shim(device::id_type id) const
-{
-  return xclOpen(id, nullptr, XCL_QUIET);
-}
-
-std::shared_ptr<device>
-dev::
-create_device(device::handle_type handle, device::id_type id) const
-{
-  return std::shared_ptr<device_linux>(new device_linux(handle, id, !m_is_mgmt));
 }
 
 /*

@@ -5,6 +5,7 @@
 #define _XCL_PCIDEV_H_
 
 #include "device_linux.h"
+#include "core/common/ishim.h"
 
 #include <fcntl.h>
 #include <memory>
@@ -56,6 +57,10 @@ struct fdt_header {
 
 namespace xrt_core { namespace pci {
 
+namespace sysfs {
+  static constexpr const char* dev_root = "/sys/bus/pci/devices/";
+}
+
 // Forward declaration
 class drv;
 
@@ -75,8 +80,6 @@ public:
   uint16_t m_func =             INVALID_ID;
   uint32_t m_instance =         INVALID_ID;
   std::string m_sysfs_name;     // dir name under /sys/bus/pci/devices
-  int m_user_bar =              0;  // BAR mapped in by tools, default is BAR0
-  size_t m_user_bar_size =      0;
   bool m_is_mgmt =              false;
   bool m_is_ready =             false;
 
@@ -85,18 +88,22 @@ public:
   virtual
   ~dev();
 
-  virtual void
+  void
   sysfs_get(const std::string& subdev, const std::string& entry,
             std::string& err, std::vector<std::string>& sv);
-  virtual void
+
+  void
   sysfs_get(const std::string& subdev, const std::string& entry,
             std::string& err, std::vector<uint64_t>& iv);
-  virtual void
+
+  void
   sysfs_get(const std::string& subdev, const std::string& entry,
             std::string& err, std::string& s);
-  virtual void
+
+  void
   sysfs_get(const std::string& subdev, const std::string& entry,
             std::string& err, std::vector<char>& buf);
+
   template <typename T>
   void
   sysfs_get(const std::string& subdev, const std::string& entry,
@@ -110,70 +117,78 @@ public:
       i = static_cast<T>(default_val); // default value
   }
 
-  virtual void
+  void
   sysfs_get_sensor(const std::string& subdev, const std::string& entry, uint32_t& i)
   {
     std::string err;
     sysfs_get<uint32_t>(subdev, entry, err, i, 0);
   }
 
-  virtual void
+  void
   sysfs_put(const std::string& subdev, const std::string& entry,
             std::string& err, const std::string& input);
-  virtual void
+
+  void
   sysfs_put(const std::string& subdev, const std::string& entry,
             std::string& err, const std::vector<char>& buf);
 
-  virtual void
+  void
   sysfs_put(const std::string& subdev, const std::string& entry,
             std::string& err, const unsigned int& buf);
 
-  virtual std::string
+  std::string
   get_sysfs_path(const std::string& subdev, const std::string& entry);
 
-  virtual std::string
+  std::string
   get_subdev_path(const std::string& subdev, uint32_t idx) const;
 
-  virtual int
-  pcieBarRead(uint64_t offset, void* buf, uint64_t len) const;
-
-  virtual int
-  pcieBarWrite(uint64_t offset, const void* buf, uint64_t len) const;
-
-  virtual int
+  int
   open(const std::string& subdev, int flag) const;
 
-  virtual int
+  int
   open(const std::string& subdev, uint32_t idx, int flag) const;
 
-  virtual void
+  void
   close(int devhdl) const;
 
-  virtual int
+  int
   ioctl(int devhdl, unsigned long cmd, void* arg = nullptr) const;
 
-  virtual int
-  poll(int devhdl, short events, int timeout_ms);
-
-  virtual void
+  void
   *mmap(int devhdl, size_t len, int prot, int flags, off_t offset);
 
-  virtual int
+  int
   munmap(int devhdl, void* addr, size_t len);
 
   virtual int
-  flock(int devhdl, int op);
+  pcieBarRead(uint64_t offset, void* buf, uint64_t len) const
+  { throw ishim::not_supported_error(__func__); }
 
   virtual int
-  get_partinfo(std::vector<std::string>& info, void* blob = nullptr);
+  pcieBarWrite(uint64_t offset, const void* buf, uint64_t len) const
+  { throw ishim::not_supported_error(__func__); }
+
+  virtual int
+  poll(int devhdl, short events, int timeout_ms)
+  { throw ishim::not_supported_error(__func__); }
+
+  virtual int
+  flock(int devhdl, int op)
+  { throw ishim::not_supported_error(__func__); }
+
+  virtual int
+  get_partinfo(std::vector<std::string>& info, void* blob = nullptr)
+  { throw ishim::not_supported_error(__func__); }
 
   virtual std::shared_ptr<dev>
-  lookup_peer_dev();
-  
+  lookup_peer_dev()
+  { throw ishim::not_supported_error(__func__); }
+
   // Hand out a "device" instance that is specific to this type of device.
   // Caller will use this device to access device specific implementation of ishim.
   virtual std::shared_ptr<device>
-  create_device(device::handle_type handle, device::id_type id) const;
+  create_device(device::handle_type handle, device::id_type id) const
+  { throw ishim::not_supported_error(__func__); }
 
   // Hand out an opaque "shim" handle that is specific to this type of device.
   // On legacy Alveo device, this handle can be used to lookup a device instance and
@@ -181,16 +196,10 @@ public:
   // On new platforms, this handle can only be used to look up a device. HAL API calls
   // through it are not supported any more.
   virtual device::handle_type
-  create_shim(device::id_type id) const;
+  create_shim(device::id_type id) const
+  { throw ishim::not_supported_error(__func__); }
 
 private:
-  int
-  map_usr_bar() const;
-
-  mutable std::mutex m_lock;
-  // Virtual address of memory mapped BAR0, mapped on first use, once mapped, never change.
-  mutable char *m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
-
   std::shared_ptr<const drv> m_driver;
 };
 

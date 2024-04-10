@@ -3,6 +3,7 @@
 
 #include "pcidrv_xclmgmt.h"
 
+#include "pcidev_alveo.h"
 #include "system_linux.h"
 
 namespace {
@@ -13,3 +14,14 @@ struct X
 } x;
 
 }
+
+namespace xrt_core { namespace pci {
+
+std::shared_ptr<dev>
+drv_xclmgmt::
+create_pcidev(const std::string& sysfs) const
+{
+  return std::make_shared<shim_alveo::pdev>(shared_from_this(), sysfs);
+}
+
+}} // xrt_core :: pci

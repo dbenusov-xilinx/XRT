@@ -42,7 +42,7 @@ public:
 private:
   // Create the type of pci::dev driven by this driver which can be added to the list
   virtual std::shared_ptr<xrt_core::pci::dev>
-  create_pcidev(const std::string& sysfs) const;
+  create_pcidev(const std::string& sysfs) const = 0;
 };
 
 } } // namespace xrt_core :: pci

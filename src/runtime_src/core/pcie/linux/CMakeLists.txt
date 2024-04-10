@@ -4,11 +4,8 @@
 add_subdirectory(plugin/xdp)
 
 add_library(core_pcielinux_objects OBJECT
-  debug.cpp
-  device_linux.cpp
   pcidev.cpp
   pcidrv.cpp
-  shim.cpp
   system_linux.cpp
   )
 
@@ -26,17 +23,13 @@ target_include_directories(core_pcielinux_objects
 
 
 add_library(xrt_core SHARED
-  $<TARGET_OBJECTS:core_pcielinux_plugin_xdp_objects>
   $<TARGET_OBJECTS:core_pcielinux_objects>
   $<TARGET_OBJECTS:core_pciecommon_objects>
-  $<TARGET_OBJECTS:core_common_objects>
   )
 
 add_library(xrt_core_static STATIC
-  $<TARGET_OBJECTS:core_pcielinux_plugin_xdp_objects>
   $<TARGET_OBJECTS:core_pcielinux_objects>
   $<TARGET_OBJECTS:core_pciecommon_objects>
-  $<TARGET_OBJECTS:core_common_objects>
   )
 
 set_target_properties(xrt_core PROPERTIES
@@ -86,10 +79,10 @@ set(ALVEO_TARGET xrt_driver_alveo)
 
 add_library(${ALVEO_TARGET} SHARED
   $<TARGET_OBJECTS:core_pcielinux_plugin_xdp_objects>
+  $<TARGET_OBJECTS:core_common_objects>
   debug.cpp
   device_linux.cpp
-  pcidev.cpp
-  pcidrv.cpp
+  pcidev_alveo.cpp
   pcidrv_xocl.cpp
   pcidrv_xclmgmt.cpp
   shim.cpp
