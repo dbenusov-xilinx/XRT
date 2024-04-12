@@ -19,6 +19,20 @@ include_directories(
   ${XRT_BINARY_DIR}
   )
 
+if (SEPARATE_PACKAGE)
+  set(DRIVER_COMPONENT "alveo")
+else()
+  set(DRIVER_COMPONENT "xrt")
+endif()
+# We must explicitly state we want to separate the packatges to build 
+# in the build command.
+# If the cached variable is not removed the next build would be
+# generate separate package even if the correct flag is removed from
+# the build command.
+unset(SEPARATE_PACKAGE CACHE)
+
+message("-- Driver component is ${DRIVER_COMPONENT}")
+
 if (NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif (NOT CMAKE_CXX_STANDARD)

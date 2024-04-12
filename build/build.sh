@@ -73,6 +73,7 @@ usage()
     echo "[-install_prefix <path>]    set CMAKE_INSTALL_PREFIX to path"
     echo "[-ertbsp <dir>]             Path to directory with pre-downloaded BSP files for building ERT (default: download BSP files during build time)"
     echo "[-ertfw <dir>]              Path to directory with pre-built ert firmware (default: build the firmware)"
+    echo "[-separate-package]         Creates an xrt package without drivers and a alveo driver plugin package"
     echo ""
     echo "ERT firmware is built if and only if MicroBlaze gcc compiler can be located."
     echo "When compiler is not accesible, use -ertfw to specify path to directory with"
@@ -201,6 +202,10 @@ while [ $# -gt 0 ]; do
             ;;
         -checkpatch)
             checkpatch=1
+            shift
+            ;;
+        -separate-package)
+            cmake_flags+=" -DSEPARATE_PACKAGE=1"
             shift
             ;;
 	docs|-docs)
